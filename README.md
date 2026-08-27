@@ -1,0 +1,1 @@
+Inicio de la estructura del proyecto para notaria virtual
