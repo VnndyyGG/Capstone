@@ -1,27 +1,10 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
-
-const TRAMITES_DEMO = [
-  { folio: "EO-2026-0521", cliente_email: "cliente@easyoffice.cl", documento: "Contrato de arriendo", fecha: "2026-08-28", estado: "firmado_entregado" },
-  { folio: "EO-2026-0534", cliente_email: "cliente@easyoffice.cl", documento: "Declaración jurada", fecha: "2026-09-03", estado: "pendiente_firma" },
-  { folio: "EO-2026-0540", cliente_email: "cliente@easyoffice.cl", documento: "Domicilio tributario", fecha: "2026-09-07", estado: "en_redaccion" },
-  { folio: "EO-2026-0541", cliente_email: "cliente@easyoffice.cl", documento: "Orden de compra", fecha: "2026-09-09", estado: "pendiente_pago" },
-];
-
-app.get("/api/tramites", (req, res) => {
-  const email = req.query.cliente_email;
-  const resultado = email
-    ? TRAMITES_DEMO.filter(t => t.cliente_email === email)
-    : TRAMITES_DEMO;
-  res.json(resultado);
+const { createApp } = require('./src/app');
+const { openDatabase } = require('./src/db');
+const port = Number(process.env.PORT || 3000);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT inválido');
+const db = openDatabase(process.env.DB_PATH || './data/easyoffice.sqlite');
+const app = createApp(db);
+const server = app.listen(port, process.env.HOST || '127.0.0.1', () => {
+  console.log(`API Easy Office en http://${process.env.HOST || '127.0.0.1'}:${port}/api/health`);
 });
-
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));
