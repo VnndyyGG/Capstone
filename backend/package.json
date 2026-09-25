@@ -1,16 +1,22 @@
 {
   "name": "notaria2",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "API de procesos Easy Office: roles, tr\u00e1mites, documentos, pagos manuales y auditor\u00eda",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js",
+    "setup": "node --env-file-if-exists=.env scripts/setup.js",
+    "setup:demo": "node --env-file-if-exists=.env scripts/setup.js --demo",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^5.2.1"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
