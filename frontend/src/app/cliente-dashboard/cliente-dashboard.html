@@ -1,20 +1,27 @@
 <div class="page-head">
-    <div>
-      <h1>Mis trámites</h1>
-      <p>Revisa el estado de tus documentos o inicia uno nuevo con firma electrónica avanzada.</p>
-    </div>
-    <button class="btn-primary">+ Nuevo trámite</button>
+  <div>
+    <h1>Mis trámites</h1>
+    <p>Revisa el estado de tus documentos o inicia uno nuevo con firma electrónica avanzada.</p>
   </div>
-  
-  <div class="scope-note">Ves únicamente tus propios trámites — filtrado a nivel de base de datos (RNF-04)</div>
-  
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab() === 'listado'" (click)="showTab('listado')">Listado de trámites</button>
-    <button class="tab" [class.active]="activeTab() === 'nuevo'" (click)="showTab('nuevo')">Nuevo trámite</button>
-    <button class="tab" [class.active]="activeTab() === 'editar'" (click)="showTab('editar')">Editar documento</button>
-  </div>
-  
-  @if (activeTab() === 'listado') {
+  <button class="btn-primary">+ Nuevo trámite</button>
+</div>
+
+<div class="scope-note">Ves únicamente tus propios trámites — filtrado a nivel de base de datos (RNF-04)</div>
+
+<div class="tabs">
+  <button class="tab" [class.active]="activeTab() === 'listado'" (click)="showTab('listado')">Listado de trámites</button>
+  <button class="tab" [class.active]="activeTab() === 'nuevo'" (click)="showTab('nuevo')">Nuevo trámite</button>
+  <button class="tab" [class.active]="activeTab() === 'editar'" (click)="showTab('editar')">Editar documento</button>
+</div>
+
+@if (activeTab() === 'listado') {
+  @if (cargando()) {
+    <p>Cargando trámites...</p>
+  } @else if (error()) {
+    <p class="login-error">No se pudo conectar con el backend. ¿Está corriendo el servidor?</p>
+  } @else if (tramites().length === 0) {
+    <p>Todavía no tienes trámites registrados.</p>
+  } @else {
     <table>
       <thead>
         <tr>
@@ -22,46 +29,26 @@
           <th>Documento</th>
           <th>Fecha</th>
           <th>Estado</th>
-          <th></th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td class="folio">EO-2026-0521</td>
-          <td>Contrato de arriendo</td>
-          <td>28 ago 2026</td>
-          <td><span class="badge completo">Firmado y entregado</span></td>
-          <td><a class="row-action" href="#">Descargar</a></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0534</td>
-          <td>Declaración jurada</td>
-          <td>3 sep 2026</td>
-          <td><span class="badge firma">Pendiente de firma (1 de 2)</span></td>
-          <td><a class="row-action" href="#">Ver detalle</a></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0540</td>
-          <td>Domicilio tributario</td>
-          <td>7 sep 2026</td>
-          <td><span class="badge redaccion">En redacción</span></td>
-          <td><a class="row-action" href="#">Ver detalle</a></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0541</td>
-          <td>Orden de compra</td>
-          <td>9 sep 2026</td>
-          <td><span class="badge pendiente">Pendiente de pago</span></td>
-          <td><a class="row-action" href="#">Pagar ahora</a></td>
-        </tr>
+        @for (t of tramites(); track t.folio) {
+          <tr>
+            <td class="folio">{{ t.folio }}</td>
+            <td>{{ t.documento }}</td>
+            <td>{{ t.fecha }}</td>
+            <td><span class="badge" [class]="estadoClase(t.estado)">{{ estadoLabel(t.estado) }}</span></td>
+          </tr>
+        }
       </tbody>
     </table>
   }
-  
-  @if (activeTab() === 'nuevo') {
-    <p>Aquí va el formulario para solicitar un nuevo trámite (lo armamos en el siguiente paso).</p>
-  }
-  
-  @if (activeTab() === 'editar') {
-    <p>Aquí va el editor de documentos (lo armamos más adelante).</p>
-  }
+}
+
+@if (activeTab() === 'nuevo') {
+  <p>Aquí va el formulario para solicitar un nuevo trámite (lo armamos en el siguiente paso).</p>
+}
+
+@if (activeTab() === 'editar') {
+  <p>Aquí va el editor de documentos (lo armamos más adelante).</p>
+}

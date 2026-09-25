@@ -1,57 +1,44 @@
 import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface Rol {
+  id: number;
   name: string;
+  email: string;
+  rut: string;
   role: string;
   initials: string;
   avatarBg: string;
   crumb: string;
   tipo: 'cliente' | 'admin' | 'comercial' | 'finanzas';
+  active: boolean;
 }
 
-interface UsuarioDemo {
-  email: string;
-  password: string;
-  perfil: Rol;
-}
-
-const USUARIOS_DEMO: UsuarioDemo[] = [
-  {
-    email: 'cliente@easyoffice.cl',
-    password: '1234',
-    perfil: { name: 'María José Pérez', role: 'Cliente', initials: 'MJ', avatarBg: 'linear-gradient(160deg,#22C55E,#15803D)', crumb: 'Mis trámites', tipo: 'cliente' }
-  },
-  {
-    email: 'admin@easyoffice.cl',
-    password: '1234',
-    perfil: { name: 'Kevin Tamayo', role: 'Ejecutivo · Administración', initials: 'KT', avatarBg: '#6D28D9', crumb: 'Panel de administración', tipo: 'admin' }
-  },
-  {
-    email: 'comercial@easyoffice.cl',
-    password: '1234',
-    perfil: { name: 'Andy Fuentes', role: 'Ejecutivo · Comercial', initials: 'AF', avatarBg: '#1D4ED8', crumb: 'Trámites asignados', tipo: 'comercial' }
-  },
-  {
-    email: 'finanzas@easyoffice.cl',
-    password: '1234',
-    perfil: { name: 'Matías Oroz', role: 'Ejecutivo · Finanzas', initials: 'MO', avatarBg: '#B45309', crumb: 'Pagos y reportes', tipo: 'finanzas' }
-  },
-];
+const API_URL = 'http://localhost:3000/api';
 
 @Injectable({ providedIn: 'root' })
 export class Auth {
   currentRole = signal<Rol | null>(null);
+  token = signal<string | null>(null);
 
-  attemptLogin(email: string, password: string): boolean {
-    const usuario = USUARIOS_DEMO.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!usuario) return false;
-    this.currentRole.set(usuario.perfil);
-    return true;
+  constructor(private http: HttpClient) {}
+
+  async attemptLogin(email: string, password: string): Promise<boolean> {
+    try {
+      const result: any = await firstValueFrom(
+        this.http.post(`${API_URL}/auth/login`, { email, password })
+      );
+      this.token.set(result.token);
+      this.currentRole.set(result.perfil);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   logout() {
+    this.token.set(null);
     this.currentRole.set(null);
   }
 }

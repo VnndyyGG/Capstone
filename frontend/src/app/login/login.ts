@@ -13,11 +13,14 @@ export class Login {
   email = '';
   password = '';
   error = signal(false);
+  cargando = signal(false);
 
   constructor(private auth: Auth, private router: Router) {}
 
-  onSubmit() {
-    const ok = this.auth.attemptLogin(this.email, this.password);
+  async onSubmit() {
+    this.cargando.set(true);
+    const ok = await this.auth.attemptLogin(this.email, this.password);
+    this.cargando.set(false);
     if (!ok) {
       this.error.set(true);
       return;
