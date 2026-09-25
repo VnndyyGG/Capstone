@@ -22,7 +22,7 @@
   h1,h2,h3,.brand{font-family:'Quicksand',sans-serif;}
   button{font-family:'Inter',sans-serif;}
 
-  /* ===================== LOGIN ===================== */
+  // LOGIN
   #view-login{
     min-height:100vh;
     display:flex;flex-direction:column;align-items:center;
@@ -70,7 +70,7 @@
   #view-login footer{margin-top:40px;font-size:12px;color:var(--ink-soft);}
 
   /* ===================== APP SHELL (after login) ===================== */
-  #app-shell{display:none;}
+  //#app-shell{display:none;}
 
   .utility{background:var(--ink);color:#D8DEDA;font-size:12.5px;padding:6px 32px;display:flex;justify-content:space-between;}
   .utility a{color:#D8DEDA;text-decoration:none;}

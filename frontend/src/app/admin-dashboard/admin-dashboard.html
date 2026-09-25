@@ -1,0 +1,64 @@
+<div class="page-head">
+    <div>
+      <h1>Panel de administración</h1>
+      <p>Acceso completo: trámites de todos los clientes, usuarios, plantillas e indicadores.</p>
+    </div>
+  </div>
+  
+  <div class="scope-note">Rol con acceso total al sistema (RF-09) — cada acción queda en la bitácora de auditoría (RF-10)</div>
+  
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab() === 'tramites'" (click)="showTab('tramites')">Trámites (todos)</button>
+    <button class="tab" [class.active]="activeTab() === 'usuarios'" (click)="showTab('usuarios')">Usuarios</button>
+    <button class="tab" [class.active]="activeTab() === 'plantillas'" (click)="showTab('plantillas')">Plantillas</button>
+    <button class="tab" [class.active]="activeTab() === 'indicadores'" (click)="showTab('indicadores')">Indicadores</button>
+  </div>
+  
+  @if (activeTab() === 'tramites') {
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Cliente</th>
+          <th>Documento</th>
+          <th>Ejecutivo</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="folio">EO-2026-0521</td>
+          <td>María José Pérez</td>
+          <td>Contrato de arriendo</td>
+          <td>Andy Fuentes</td>
+          <td><span class="badge completo">Firmado</span></td>
+        </tr>
+        <tr>
+          <td class="folio">EO-2026-0538</td>
+          <td>Constructora Rivas Ltda.</td>
+          <td>Orden de compra</td>
+          <td>Andy Fuentes</td>
+          <td><span class="badge redaccion">En redacción</span></td>
+        </tr>
+        <tr>
+          <td class="folio">EO-2026-0539</td>
+          <td>Pastelería Dulce Hogar</td>
+          <td>Declaración jurada</td>
+          <td class="muted">Sin asignar</td>
+          <td><span class="badge pendiente">Pendiente de pago</span></td>
+        </tr>
+      </tbody>
+    </table>
+  }
+  
+  @if (activeTab() === 'usuarios') {
+    <p>Aquí va la tabla de usuarios (la armamos después).</p>
+  }
+  
+  @if (activeTab() === 'plantillas') {
+    <p>Aquí va la tabla de plantillas de documentos.</p>
+  }
+  
+  @if (activeTab() === 'indicadores') {
+    <p>Aquí van los KPIs del panel ejecutivo.</p>
+  }

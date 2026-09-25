@@ -1,0 +1,24 @@
+<div id="view-login">
+    <img class="login-logo" src="logo.jpg" alt="Easy Office">
+    <h1>Portal EasyOffice</h1>
+    <p class="sub">Ingresa tu correo y contraseña para acceder al portal</p>
+  
+    <form class="login-form" (ngSubmit)="onSubmit()">
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input type="email" name="email" [(ngModel)]="email" required placeholder="tucorreo@easyoffice.cl">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" name="password" [(ngModel)]="password" required placeholder="••••••">
+      </div>
+  
+      @if (error()) {
+        <p class="login-error">Correo o contraseña incorrectos.</p>
+      }
+  
+      <button type="submit" class="btn-primary">Iniciar sesión →</button>
+    </form>
+  
+    <footer>easyoffice.cl · Firmas Electrónicas</footer>
+  </div>

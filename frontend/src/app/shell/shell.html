@@ -1,0 +1,40 @@
+<div id="app-shell">
+
+    <div class="utility">
+      <span>Horario: lunes a jueves 08:30–17:30 · viernes 08:30–14:30</span>
+      <span><a href="#">info@easyoffice.cl</a> &nbsp;·&nbsp; +56 2 2277 7781</span>
+    </div>
+  
+    <header class="nav">
+      <div class="logo-wrap">
+        <img src="logo.jpg" alt="Easy Office" style="height:34px;">
+      </div>
+      <nav class="menu">
+        <a href="#">Inicio</a>
+        <a href="#">Domicilio tributario</a>
+        <a href="#">Contabilidad</a>
+        <a href="#" class="active">Firmas Electrónicas</a>
+        <a href="#">Asesoría Empresas</a>
+        <a href="#">Rebaja Tributaria</a>
+      </nav>
+      <div class="nav-right">
+        <div class="user-chip">
+          <div class="avatar" [style.background]="auth.currentRole()?.avatarBg">{{ auth.currentRole()?.initials }}</div>
+          <div>
+            <div class="name">{{ auth.currentRole()?.name }}</div>
+            <div class="role">{{ auth.currentRole()?.role }}</div>
+          </div>
+        </div>
+        <span class="logout-link" (click)="logout()">Cerrar sesión</span>
+      </div>
+    </header>
+  
+    <div class="breadcrumb">
+      Inicio &nbsp;›&nbsp; Firmas Electrónicas &nbsp;›&nbsp; <span class="current">{{ auth.currentRole()?.crumb }}</span>
+    </div>
+  
+    <main>
+      <router-outlet></router-outlet>
+    </main>
+  
+  </div>

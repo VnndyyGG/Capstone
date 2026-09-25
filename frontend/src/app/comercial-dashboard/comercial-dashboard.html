@@ -1,0 +1,51 @@
+<div class="page-head">
+    <div>
+      <h1>Trámites asignados</h1>
+      <p>Gestiona tus trámites y consulta datos de cualquier cliente para hacer seguimiento.</p>
+    </div>
+  </div>
+  
+  <div class="scope-note">Puedes editar solo tus trámites asignados; la consulta de otros clientes queda registrada en auditoría (RF-10)</div>
+  
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab() === 'mistramites'" (click)="showTab('mistramites')">Mis trámites asignados</button>
+    <button class="tab" [class.active]="activeTab() === 'buscar'" (click)="showTab('buscar')">Buscar cliente</button>
+  </div>
+  
+  @if (activeTab() === 'mistramites') {
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Cliente</th>
+          <th>Documento</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="folio">EO-2026-0521</td>
+          <td>María José Pérez</td>
+          <td>Contrato de arriendo</td>
+          <td><span class="badge completo">Firmado</span></td>
+          <td><a class="row-action" href="#">Ver</a></td>
+        </tr>
+        <tr>
+          <td class="folio">EO-2026-0538</td>
+          <td>Constructora Rivas Ltda.</td>
+          <td>Orden de compra</td>
+          <td><span class="badge redaccion">En redacción</span></td>
+          <td><a class="row-action" href="#">Gestionar</a></td>
+        </tr>
+      </tbody>
+    </table>
+  }
+  
+  @if (activeTab() === 'buscar') {
+    <div class="search-bar">
+      <input type="text" placeholder="Buscar cliente por nombre o RUT...">
+      <button class="btn-primary">Buscar</button>
+    </div>
+    <p class="muted">Escribe un nombre o RUT para consultar los trámites de cualquier cliente (la consulta queda registrada en auditoría).</p>
+  }

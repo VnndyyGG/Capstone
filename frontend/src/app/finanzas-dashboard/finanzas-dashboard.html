@@ -1,0 +1,73 @@
+<p>finanzas-dashboard works!</p>
+<div class="page-head">
+    <div>
+      <h1>Pagos y reportes</h1>
+      <p>Acceso restringido a pagos, comprobantes y reportes financieros.</p>
+    </div>
+  </div>
+  
+  <div class="scope-note">Sin acceso a la redacción de documentos — solo información de pago y reportes</div>
+  
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab() === 'pagos'" (click)="showTab('pagos')">Pagos</button>
+    <button class="tab" [class.active]="activeTab() === 'comprobantes'" (click)="showTab('comprobantes')">Comprobantes</button>
+    <button class="tab" [class.active]="activeTab() === 'reportes'" (click)="showTab('reportes')">Reportes</button>
+  </div>
+  
+  @if (activeTab() === 'pagos') {
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Cliente</th>
+          <th>Monto</th>
+          <th>Método</th>
+          <th>Estado Webpay</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="folio">EO-2026-0521</td>
+          <td>María José Pérez</td>
+          <td>$22.000</td>
+          <td class="muted">Débito</td>
+          <td><span class="badge aprobado">Aprobado</span></td>
+        </tr>
+        <tr>
+          <td class="folio">EO-2026-0498</td>
+          <td>María José Pérez</td>
+          <td>$18.000</td>
+          <td class="muted">Crédito</td>
+          <td><span class="badge rechazado">Rechazado</span></td>
+        </tr>
+        <tr>
+          <td class="folio">EO-2026-0538</td>
+          <td>Constructora Rivas Ltda.</td>
+          <td>$15.000</td>
+          <td class="muted">Débito</td>
+          <td><span class="badge aprobado">Aprobado</span></td>
+        </tr>
+      </tbody>
+    </table>
+  }
+  
+  @if (activeTab() === 'comprobantes') {
+    <p>Aquí van los comprobantes de pago descargables.</p>
+  }
+  
+  @if (activeTab() === 'reportes') {
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Ingresos del mes</div>
+        <div class="kpi-value">$1.240.000</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Pagos rechazados</div>
+        <div class="kpi-value">4</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Ticket promedio</div>
+        <div class="kpi-value">$19.800</div>
+      </div>
+    </div>
+  }
