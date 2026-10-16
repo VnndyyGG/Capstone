@@ -22,8 +22,8 @@ function email(value) {
   return result;
 }
 function password(value) {
-  if (typeof value !== 'string' || value.length < 12 || value.length > 128)
-    fail(400, 'VALIDATION_ERROR', 'La contraseña debe tener entre 12 y 128 caracteres.');
+  if (typeof value !== 'string' || value.length < 10 || value.length > 128)
+    fail(400, 'VALIDATION_ERROR', 'La contraseña debe tener entre 10 y 128 caracteres.');
   return value;
 }
 function bool(value, name) {

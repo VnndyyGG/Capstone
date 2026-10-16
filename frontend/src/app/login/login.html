@@ -1,8 +1,21 @@
-<div id="view-login">
-    <img class="login-logo" src="logo.jpg" alt="Easy Office">
-    <h1>Portal EasyOffice</h1>
+<div class="login-page">
+  <img class="login-logo" src="logo.jpg" alt="Easy Office">
+  <h1>Portal EasyOffice</h1>
+
+  <div class="toggle" [class.register]="isToggled()">
+    <span class="slider"></span>
+    <button type="button" [class.active]="!isToggled()" (click)="setMode(false)">
+      Iniciar sesión
+    </button>
+    <button type="button" [class.active]="isToggled()" (click)="setMode(true)">
+      Registrarse
+    </button>
+  </div>
+
+  @if (!isToggled()) {
+  <div class="view">
     <p class="sub">Ingresa tu correo y contraseña para acceder al portal</p>
-  
+
     <form class="login-form" (ngSubmit)="onSubmit()">
       <div class="field">
         <label>Correo electrónico</label>
@@ -10,15 +23,68 @@
       </div>
       <div class="field">
         <label>Contraseña</label>
-        <input type="password" name="password" [(ngModel)]="password" required placeholder="••••••">
+        <input type="password" name="password" [(ngModel)]="password" required minlength="12"
+          placeholder="*******">
       </div>
-  
-      @if (error()) {
-        <p class="login-error">Correo o contraseña incorrectos.</p>
+
+      @if (errorRegistro()) {
+      <p class="login-error">{{ errorRegistro() }}</p>
       }
-  
-      <button type="submit" class="btn-primary">Iniciar sesión →</button>
+
+      <button type="submit" class="btn-primary" [disabled]="cargando()">
+        {{ cargando() ? 'Cargando...' : 'Iniciar sesión →' }}
+      </button>
     </form>
-  
-    <footer>easyoffice.cl · Firmas Electrónicas</footer>
   </div>
+  } @else {
+  <div class="view">
+    <p class="sub">Completa tus datos para registrarte en el portal</p>
+
+    <form class="login-form" (ngSubmit)="onRegister()">
+      <div class="field">
+        <label>RUT</label>
+        <input type="text" name="rut" [ngModel]="rut" (ngModelChange)="onRutChange($event)" required maxlength="12"
+          autocomplete="off" placeholder="12.345.678-9">
+        @if (!rutValido()) {
+        <small class="field-error">RUT inválido, revisa el dígito verificador.</small>
+        }
+      </div>
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" name="nombre" [(ngModel)]="nombre" required placeholder="Juanito Perez">
+      </div>
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input type="email" name="email" [(ngModel)]="email" required placeholder="tucorreo@easyoffice.cl">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <!-- login.html -->
+        <input type="password" name="password" [(ngModel)]="password" required minlength="10" placeholder="******">
+      </div>
+
+      @if (error()) {
+      <p class="login-error">Hubo un problema al registrar la cuenta.</p>
+      }
+
+      <button type="submit" class="btn-primary" [disabled]="cargando()">
+        {{ cargando() ? 'Registrando...' : 'Registrarse →' }}
+      </button>
+
+      <div class="divider"><span>o</span></div>
+
+      <button type="button" class="btn-clave" (click)="registrarConClaveUnica()">
+        Registrarse con ClaveÚnica
+      </button>
+
+      @if (avisoClaveUnica()) {
+      <p class="login-info">
+        Próximamente: la integración con ClaveÚnica estará disponible en un próximo sprint.
+      </p>
+      }
+    </form>
+  </div>
+  }
+
+  <footer>easyoffice.cl · Firmas Electrónicas</footer>
+</div>

@@ -1,12 +1,51 @@
-.login-form {
-    max-width: 360px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+.login-form .field {
+  text-align: left;
+}
+
+.toggle {
+  width: 100%;
+  max-width: 320px;
+  margin: 16px 0 24px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 320px;
+  margin: 16px auto 24px;
+  padding: 4px;
+  background: #16a34a;
+  border-radius: 999px;
+
+  // Pieza blanca que se desliza
+  .slider {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    background: #fff;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .login-error {
-    color: #B91C1C;
-    font-size: 13px;
-    margin: 0;
+
+  &.register .slider {
+    transform: translateX(100%);
   }
+
+  button {
+    position: relative;
+    z-index: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+
+    &.active {
+      color: #16a34a;
+    }
+  }
+}
