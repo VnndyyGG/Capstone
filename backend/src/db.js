@@ -1,77 +1,45 @@
-const { DatabaseSync } = require('node:sqlite');
-const { mkdirSync } = require('node:fs');
-const { dirname, resolve } = require('node:path');
+const { Pool, types } = require('pg');
+const { AsyncLocalStorage } = require('node:async_hooks');
 
-function openDatabase(filename) {
-  if (filename !== ':memory:') mkdirSync(dirname(resolve(filename)), { recursive: true });
-  const db = new DatabaseSync(filename);
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-    PRAGMA journal_mode = WAL;
-    PRAGMA busy_timeout = 5000;
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL, rut TEXT NOT NULL DEFAULT '',
-      role TEXT NOT NULL CHECK(role IN ('cliente','admin','comercial','finanzas')),
-      active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)), created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), expires_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS login_attempts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, reset_at INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS services (
-      id INTEGER PRIMARY KEY, name TEXT NOT NULL, price INTEGER NOT NULL CHECK(price > 0 AND price <= 100000000),
-      requires_signature INTEGER NOT NULL CHECK(requires_signature IN (0,1)), active INTEGER NOT NULL DEFAULT 1
-    );
-    CREATE TABLE IF NOT EXISTS templates (
-      id INTEGER PRIMARY KEY, name TEXT NOT NULL, content TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
-      active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS cases (
-      id INTEGER PRIMARY KEY, folio TEXT UNIQUE, client_id INTEGER NOT NULL REFERENCES users(id),
-      assigned_id INTEGER REFERENCES users(id), service_id INTEGER NOT NULL REFERENCES services(id),
-      service_name TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount > 0), requires_signature INTEGER NOT NULL,
-      title TEXT NOT NULL, details TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL CHECK(status IN ('pendiente_pago','en_redaccion','en_revision','observado','aprobado','pendiente_firma','firmado','entregado','completado','cancelado')),
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS cases_client ON cases(client_id);
-    CREATE INDEX IF NOT EXISTS cases_assigned ON cases(assigned_id);
-    CREATE TABLE IF NOT EXISTS documents (
-      id INTEGER PRIMARY KEY, case_id INTEGER NOT NULL REFERENCES cases(id), version INTEGER NOT NULL,
-      content TEXT NOT NULL, author_id INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL,
-      UNIQUE(case_id,version)
-    );
-    CREATE TABLE IF NOT EXISTS attachments (
-      id INTEGER PRIMARY KEY, case_id INTEGER NOT NULL REFERENCES cases(id), name TEXT NOT NULL,
-      mime TEXT NOT NULL, bytes BLOB NOT NULL, sha256 TEXT NOT NULL,
-      author_id INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS payments (
-      id INTEGER PRIMARY KEY, case_id INTEGER NOT NULL REFERENCES cases(id), amount INTEGER NOT NULL,
-      method TEXT NOT NULL CHECK(method = 'transferencia'), reference TEXT UNIQUE NOT NULL,
-      status TEXT NOT NULL CHECK(status IN ('pendiente','aprobado','rechazado')),
-      submitted_by INTEGER NOT NULL REFERENCES users(id), reviewed_by INTEGER REFERENCES users(id),
-      reason TEXT, created_at TEXT NOT NULL, reviewed_at TEXT
-    );
-    CREATE UNIQUE INDEX IF NOT EXISTS payments_open ON payments(case_id) WHERE status IN ('pendiente','aprobado');
-    CREATE TABLE IF NOT EXISTS notifications (
-      id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), case_id INTEGER REFERENCES cases(id),
-      message TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS audit (
-      id INTEGER PRIMARY KEY, actor_id INTEGER REFERENCES users(id), action TEXT NOT NULL,
-      entity TEXT NOT NULL, entity_id INTEGER, metadata TEXT NOT NULL, created_at TEXT NOT NULL
-    );
-    CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT, 'Audit is append-only'); END;
-    CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT, 'Audit is append-only'); END;
-    PRAGMA user_version = 1;
-  `);
+// COUNT/SUM devuelven BIGINT y AVG NUMERIC; pg los entrega como string por defecto.
+types.setTypeParser(20, Number);
+types.setTypeParser(1700, Number);
+
+// Las consultas usan "?" como en SQLite; se traducen a $1, $2... para pg.
+const toPg = sql => { let i = 0; return sql.replace(/\?/g, () => '$' + ++i); };
+
+async function openDatabase(connectionString = process.env.DATABASE_URL) {
+  // Sin DATABASE_URL, pg usa PGHOST, PGPORT, PGDATABASE, PGUSER y PGPASSWORD.
+  const pool = new Pool(connectionString ? { connectionString } : {});
+  pool.on('error', error => console.error('PostgreSQL error:', error.code || error.message));
+  const tx = new AsyncLocalStorage();
+  const query = (sql, args) => (tx.getStore() || pool).query(toPg(sql), args);
+  const db = {
+    run: async (sql, ...args) => ({ changes: (await query(sql, args)).rowCount }),
+    insert: async (sql, ...args) => (await query(sql + ' RETURNING id', args)).rows[0].id,
+    one: async (sql, ...args) => (await query(sql, args)).rows[0],
+    all: async (sql, ...args) => (await query(sql, args)).rows,
+    close: () => pool.end(),
+    pool
+  };
+  db.transaction = async fn => {
+    if (tx.getStore()) return fn();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await tx.run(client, fn);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally { client.release(); }
+  };
+  try {
+    // Solo verifica la conexión: el esquema lo administra el equipo con db/schema.sql.
+    await pool.query('SELECT 1');
+  } catch (error) { await pool.end(); throw error; }
   return db;
 }
-function transaction(db, fn) {
-  db.exec('BEGIN IMMEDIATE');
-  try { const result = fn(); db.exec('COMMIT'); return result; }
-  catch (error) { db.exec('ROLLBACK'); throw error; }
-}
+const transaction = (db, fn) => db.transaction(fn);
 module.exports = { openDatabase, transaction };

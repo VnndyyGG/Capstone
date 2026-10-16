@@ -1,7 +1,7 @@
 {
   "name": "notaria2",
   "version": "1.0.0",
-  "description": "API de procesos Easy Office: roles, tr\u00e1mites, documentos, pagos manuales y auditor\u00eda",
+  "description": "API de procesos Easy Office: roles, trámites, documentos, pagos manuales y auditoría",
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
@@ -15,7 +15,8 @@
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "pg": "^8.23.1"
   },
   "engines": {
     "node": ">=24.0.0"

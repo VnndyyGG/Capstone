@@ -63,6 +63,6 @@ Comercial puede consultar datos básicos de cualquier cliente y resúmenes de tr
 | Reportes locales | Acordar calendario financiero: esta versión agrupa por mes de verificación en UTC, no por horario de Chile |
 | Métricas de reducción de tiempos/errores | Línea base y medición con procesos reales; no se pueden demostrar porcentajes solo construyendo endpoints |
 
-SQLite facilita ejecutar y probar localmente. Se eligió para esta primera base porque no se indicó un motor. Si el proyecto exige PostgreSQL/MySQL, se debe adaptar persistencia y migraciones antes del despliegue. Esta versión está diseñada para una sola instancia Node; no ejecutar un clúster sobre el mismo archivo.
+La persistencia usa PostgreSQL mediante `pg`. La conexión se configura con `DATABASE_URL` en `backend/.env` (ver `.env.example`); el backend no crea tablas: el esquema se administra manualmente (las tablas que usa la API están en `backend/db/schema.sql`).
 
 Los servicios, precios y plantilla cargados por `setup:demo` son exclusivamente ejemplos técnicos. No se implementa un sistema de notaría ni una firma legal por cambiar un estado en una tabla.
