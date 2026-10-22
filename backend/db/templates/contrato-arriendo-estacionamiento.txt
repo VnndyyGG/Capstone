@@ -1,0 +1,67 @@
+Contrato de Arriendo de Estacionamiento
+
+Con fecha {{fecha_contrato}}, comparecen: Por una parte, {{arrendador_nombre}}, {{arrendador_nacionalidad}}, {{arrendador_estado_civil}}, cédula nacional de identidad número {{arrendador_rut}}, domiciliado(a) en {{arrendador_domicilio}}, comuna de {{arrendador_comuna}}, {{arrendador_region}}, correo electrónico {{arrendador_email}}, por una parte, como arrendador, en adelante, indistintamente el “arrendador(a)”; y por la otra, {{arrendatario_nombre}}, {{arrendatario_nacionalidad}}, {{arrendatario_estado_civil}}, cédula nacional de identidad número {{arrendatario_rut}}, domiciliado(a) en {{arrendatario_domicilio}}, comuna de {{arrendatario_comuna}}, {{arrendatario_region}}, correo electrónico {{arrendatario_email}}, en adelante e indistintamente, el “arrendatario(a)”; los contratantes mayores de edad exponen que han convenido el presente contrato de arriendo, el que consta de las cláusulas que siguen:
+
+PRIMERO El arrendador(a), es dueño del departamento número {{depto_numero}}. Ubicado en {{inmueble_direccion}}, comuna de {{inmueble_comuna}}, {{inmueble_region}}, cuyo título de dominio se encuentra inscrito a fojas {{inscripcion_fojas}} con el número {{inscripcion_numero}} en el Registro del Conservador de Bienes Raíces de {{conservador_ciudad}}, {{inscripcion_complemento}} del año {{inscripcion_anio}}.
+
+SEGUNDO El arrendador(a), es dueño del estacionamiento número {{estacionamiento_numero}}, piso {{estacionamiento_piso}}, ubicado en la dirección indicada en la cláusula precedente.
+
+TERCERO Por el presente instrumento, el arrendador(a) da en arrendamiento al arrendatario(a), el estacionamiento singularizado en la cláusula segunda precedente.
+
+CUARTO La renta de arrendamiento es la cantidad de {{renta}}. Dicha renta de arrendamiento deberá pagarse dentro de los primeros cinco días de cada mes, en forma anticipada, en el domicilio del arrendador(a) señalado en la comparecencia del presente contrato, o bien mediante transferencia electrónica en la cuenta {{cuenta_tipo}} del banco {{banco}}, número {{cuenta_numero}}, debiendo dar aviso al correo electrónico {{aviso_email}}. Contra el pago el arrendador(a) deberá otorgar el correspondiente recibo de pago, el que podrá ser enviado vía electrónica al arrendatario(a). La renta deberá ser pagada en su valor en pesos al día del pago, en caso de estar pactada en unidades de fomento UF o alguna moneda extranjera. La renta de arrendamiento se reajustará mensualmente en la misma proporción de la variación del Índice de Precios al Consumidor IPC del mes inmediatamente anterior, en caso de estar pactada en pesos.
+
+QUINTO El simple retardo o mora en el pago de la renta de arrendamiento, más allá de los cinco días señalados precedentemente, hará incurrir al arrendatario(a) en una multa moratoria de un 10 por ciento de la renta vigente, por cada día de atraso, la que se pagará conjuntamente con ella y además constituirá en mora al arrendatario(a) y dará derecho al arrendador(a) a poner término inmediato al presente contrato. En el evento de ser necesaria una cobranza judicial, el arrendatario(a) deberá pagar, además, un diez por ciento sobre la suma total adeudada, a título de gastos de cobranza.
+
+SEXTO El presente contrato tendrá una vigencia de {{vigencia_meses}} mes(es), comenzando a regir desde el día {{fecha_inicio}}. El presente contrato se renovará de forma tácita, sucesiva y automáticamente por períodos de {{renovacion_meses}} mes(es) salvo que alguna de las partes manifieste su intención de ponerle término con una anticipación mínima de 45 días corridos, previos al vencimiento del plazo pactado o de la prórroga que estuviese corriendo, mediante comunicación escrita por cualquier medio idóneo al efecto. Se entenderá como suficiente aviso de término de contrato el envío de un correo electrónico a la otra parte.
+
+SÉPTIMO Las partes convienen, para todos los efectos legales a que hubiere lugar, que servirá de recibo de pago de la renta mensual de arrendamiento los documentos que al efecto emita el arrendador(a) como recibos de pago, o a falta de estos, se reputará como comprobante de pago, la boleta de depósito o transferencia electrónica, en la cuenta bancaria del arrendatario(a).
+
+OCTAVO El arrendatario(a), deberá destinar el inmueble arrendado exclusivamente para estacionamiento de vehículos, no pudiendo utilizarlo de bodega u otra finalidad.
+
+NOVENO La entrega material del estacionamiento se efectúa en este acto, totalmente desocupado y con todos sus gastos asociados día, entregándole las llaves y poniéndolo a disposición del arrendatario(a).
+
+DÉCIMO El arrendatario(a) declara conocer el estado actual del estacionamiento arrendado, como asimismo el estado de funcionamiento de todos los servicios e instalaciones. El arrendatario(a) se obliga a mantener en buen estado de funcionamiento las instalaciones eléctricas o de otra índole que se encuentren en el estacionamiento arrendado, efectuando oportunamente y a su costo todas las reparaciones adecuadas para su conservación y buen funcionamiento. Las mejoras necesarias serán de exclusivo cargo del arrendatario(a).
+
+UNDÉCIMO El arrendador(a) no responderá de manera alguna por robos que puedan ocurrir en el inmueble arrendado o por perjuicios que puedan producirse por incendios, inundaciones, filtraciones, roturas de cañerías, efectos de humedad, calor y otros hechos de análoga naturaleza.
+
+DUODÉCIMO Queda estrictamente prohibido a al arrendatario(a), por lo que se deberá abstener de efectuar cualquiera de estas acciones:
+
+a) Ceder o transferir a cualquier título el presente contrato;
+
+b) Hacer transformaciones en el estacionamiento, salvo aquellas que, debidamente formuladas por un profesional del área construcción, sean aprobadas por el arrendador(a), ya sea por escrito, o bien firmando el plano respectivo en señal de aceptación, casos en los cuales, el arrendatario(a) deberá dar cumplimiento cabal a todas las normas legales aplicables;
+
+c) Causar molestias a los vecinos;
+
+d) Introducir materiales explosivos o inflamables en el estacionamiento arrendado;
+
+e) Destinar el inmueble a un fin distinto del establecido en la cláusula séptima precedente.
+
+f) No Cumplir el reglamento de copropiedad de la comunidad.
+
+g) No Pagar en tiempo y forma los gastos comunes.
+
+La inobservancia de cualquiera de estas prohibiciones por parte de el arrendatario(a), se entenderá como un incumplimiento grave de sus obligaciones y dará derecho al arrendador(a) a poner término inmediato al presente contrato de arrendamiento, por lo que las partes elevan la presente cláusula a la categoría de “cláusula esencial” del contrato.
+
+DECIMOTERCERO Será obligación del arrendador(a), pagar las contribuciones o impuesto territorial, que grave al estacionamiento arrendado. Asimismo, será obligación del arrendatario(a) pagar todos los gastos que origine su calidad de arrendatario y, especialmente, los consumos de energía eléctrica, gastos comunes y derechos municipales.
+
+DECIMOCUARTO Toda mejora introducida en el estacionamiento arrendado será en beneficio del mismo, sin cargo alguno para el arrendador(a), desde el momento mismo en que se introduzcan y sin que por ello el arrendador(a) deba pagar suma alguna.
+
+DECIMOQUINTO Serán de cargo del arrendatario(a), los gastos que pueda ocasionar el cumplimiento de órdenes o disposiciones que, en cualquier tiempo pueda impartir la autoridad en razón del uso a que se destinará el estacionamiento. Asimismo, será de cargo del arrendatario(a) el pago de cualquier multa que deba pagar con ocasión de la transgresión o incumplimiento de cualquier normativa que le sea imputable.
+
+DECIMOSEXTO Las partes convienen en que, ante el evento de morosidad por más de 15 días corridos o no pago de rentas de arrendamiento por parte del arrendatario(a), el arrendador(a) estará facultado para enviar dicha información al Boletín Comercial de la Cámara de Comercio de Santiago u otro, para su publicación en registros públicos. Lo anterior, con el objeto de dar cumplimiento a la ley sobre privacidad de antecedentes personales. Todo gasto por concepto de publicación y aclaración de antecedentes será de cargo del arrendatario(a).
+
+DECIMOSÉPTIMO El arrendatario(a) se obliga a restituir el estacionamiento arrendado inmediatamente después que expire o termine este contrato o cualquiera de sus renovaciones, la que deberá efectuarse mediante la desocupación total del estacionamiento, poniéndolo a disposición del arrendador(a). Se obliga asimismo, a entregar al arrendador(a), en la oportunidad correspondiente, los recibos o comprobantes que acrediten que el estacionamiento no registra deudas por concepto de suministros de energía eléctrica y gastos comunes, así como de patentes municipales, y de cualquier gasto que se haya producido hasta el último día en que ocupó el estacionamiento. Finalmente, el arrendatario(a), deberá restituir la el estacionamiento, en el mismo buen estado de conservación en que fue recibido, a lo menos. Si el arrendatario(a) no restituyere el estacionamiento en el plazo y forma indicada precedentemente, deberá pagar al arrendador(a), a título de multa moratoria, una cantidad equivalente al 30 por ciento de la renta mensual de arrendamiento, por cada mes de atraso. Para estos efectos, se tendrá como renta de arrendamiento, el monto correspondiente al mes inmediatamente anterior, al que se debió efectuar la restitución del inmueble.
+
+DECIMOCTAVO A fin de garantizar la conservación del estacionamiento arrendado y su restitución en el mismo estado en que la recibe, el pago de los eventuales perjuicios y deterioros que se causen en el estacionamiento arrendado, sus servicios e instalaciones, pago de gastos comunes, y en general, para responder al fiel cumplimento de las estipulaciones del presente contrato, el arrendatario(a) entrega en garantía, en este acto, a arrendador(a), la cantidad equivalente a un mes de renta. El arrendador(a) se obliga a devolver la garantía, dentro de los 45 días siguientes a la fecha de la restitución efectiva del estacionamiento objeto del presente contrato, quedando desde luego, autorizado el arrendador(a) para descontar automáticamente de la garantía, el valor efectivo de los deterioros y perjuicios de cargo del arrendatario(a) que se hayan ocasionado, y el de las cuentas pendientes de energía y cualquier otro servicio y gastos comunes, así como las multas que por cualquier incumplimiento sea procedente cobrar al arrendatario(a). El arrendatario(a) no podrá, en ningún caso, imputar la garantía al pago de rentas insolutas, ni a la renta de arrendamiento del último o últimos meses en que permanezca en el estacionamiento.
+
+DECIMONOVENO Las partes fijan como domicilio la ciudad y comuna en la que se encuentra ubicado el inmueble arrendado, prorrogando la jurisdicción de sus Tribunales de Justicia
+
+EL ARRENDADOR
+____________________________
+Nombre: {{arrendador_nombre}}
+RUT: {{arrendador_rut}}
+
+EL ARRENDATARIO
+____________________________
+Nombre: {{arrendatario_nombre}}
+RUT: {{arrendatario_rut}}

@@ -1,6 +1,3 @@
--- Tablas que usa la API de Easy Office (usuarios, trámites, pagos, auditoría).
--- El backend NO las crea: ejecuta este script tú mismo en pgAdmin o con psql
--- sobre la base indicada en DATABASE_URL. Es idempotente (IF NOT EXISTS / OR REPLACE).
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
@@ -17,17 +14,31 @@ CREATE TABLE IF NOT EXISTS services (
   requires_signature INTEGER NOT NULL CHECK(requires_signature IN (0,1)), active INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS templates (
-  id SERIAL PRIMARY KEY, name TEXT NOT NULL, content TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+  id SERIAL PRIMARY KEY, slug TEXT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'general',
+  description TEXT NOT NULL DEFAULT '', fields TEXT NOT NULL DEFAULT '[]', clauses TEXT NOT NULL DEFAULT '[]',
+  content TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
   active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL
 );
+-- Migración para bases creadas antes de existir los tipos de plantilla (idempotente).
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS slug TEXT;
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'general';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS fields TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS clauses TEXT NOT NULL DEFAULT '[]';
+CREATE UNIQUE INDEX IF NOT EXISTS templates_slug ON templates(slug);
+-- Cada servicio del catálogo apunta a la plantilla con la que se redacta su documento.
+ALTER TABLE services ADD COLUMN IF NOT EXISTS template_id INTEGER REFERENCES templates(id);
 CREATE TABLE IF NOT EXISTS cases (
   id SERIAL PRIMARY KEY, folio TEXT UNIQUE, client_id INTEGER NOT NULL REFERENCES users(id),
   assigned_id INTEGER REFERENCES users(id), service_id INTEGER NOT NULL REFERENCES services(id),
   service_name TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount > 0), requires_signature INTEGER NOT NULL,
   title TEXT NOT NULL, details TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL CHECK(status IN ('pendiente_pago','en_redaccion','en_revision','observado','aprobado','pendiente_firma','firmado','entregado','completado','cancelado')),
+  status TEXT NOT NULL CHECK(status IN ('borrador','pendiente_pago','en_redaccion','en_revision','observado','aprobado','pendiente_firma','firmado','entregado','completado','cancelado')),
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
+-- Migración: nuevo estado 'borrador' (el cliente completa y edita el documento ANTES de pagar). Idempotente.
+ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_status_check;
+ALTER TABLE cases ADD CONSTRAINT cases_status_check CHECK(status IN ('borrador','pendiente_pago','en_redaccion','en_revision','observado','aprobado','pendiente_firma','firmado','entregado','completado','cancelado'));
 CREATE INDEX IF NOT EXISTS cases_client ON cases(client_id);
 CREATE INDEX IF NOT EXISTS cases_assigned ON cases(assigned_id);
 CREATE TABLE IF NOT EXISTS documents (

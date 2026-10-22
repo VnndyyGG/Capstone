@@ -22,8 +22,9 @@ export interface CaseRow {
 }
 export interface DocumentRow { id: number; version: number; content: string; created_at: string; }
 export interface AttachmentRow { id: number; name: string; sha256: string; created_at: string; }
-export interface CaseDetail extends CaseRow { documents: DocumentRow[]; attachments: AttachmentRow[]; }
-export interface Servicio { id: number; name: string; price: number; requires_signature: number; }
+export interface CaseDetail extends CaseRow { template_id: number | null; documents: DocumentRow[]; attachments: AttachmentRow[]; }
+export interface Servicio { id: number; name: string; price: number; requires_signature: number; template_id: number | null; }
+
 export type TipoCampo = 'text' | 'textarea' | 'email' | 'number' | 'rut' | 'select';
 export interface CampoPlantilla {
   key: string; label: string; group?: string; type: TipoCampo; required: boolean;
@@ -79,8 +80,8 @@ export class Tramites {
   getNotificaciones() { return this.http.get<{ items: Notificacion[] }>(`${API}/notificaciones`, this.h()); }
 
   // ---- Trámite ----
-  crearTramite(serviceId: number, title: string, details: string) {
-    return this.http.post<CaseRow>(`${API}/tramites`, { serviceId, title, details }, this.h());
+  crearTramite(serviceId: number, details = '') {
+    return this.http.post<CaseRow>(`${API}/tramites`, { serviceId, details }, this.h());
   }
   getTramite(id: number) { return this.http.get<CaseDetail>(`${API}/tramites/${id}`, this.h()); }
   cambiarEstado(id: number, status: string, reason = '') {

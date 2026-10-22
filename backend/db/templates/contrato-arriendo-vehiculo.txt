@@ -1,0 +1,64 @@
+CONTRATO DE ARRENDAMIENTO DE VEHÍCULO
+
+En {{comuna}}, a {{fecha_contrato}}, comparecen: por una parte, Don/Doña {{propietario_nombre}}, RUT N.º {{propietario_rut}}, domiciliado/a en {{propietario_domicilio}}, en adelante el “Arrendador”; y por otra parte, {{razon_social}}, RUT N.º {{rut_empresa}}, representada legalmente por don/doña {{representante_nombre}}, RUT N.º {{representante_rut}}, domiciliada en {{empresa_domicilio}}, en adelante la “Arrendataria”. Las partes acuerdan celebrar el siguiente contrato de arrendamiento:
+
+PRIMERO: VEHÍCULO
+
+El Arrendador entrega en arrendamiento a la Arrendataria el siguiente vehículo de su propiedad:
+
+Marca: {{marca}}
+Modelo: {{modelo}}
+Año: {{anio}}
+Patente: {{patente}}
+Color: {{color}}
+VIN/Chasis: {{vin}}
+
+La Arrendataria declara recibir el vehículo en condiciones adecuadas de funcionamiento.
+
+SEGUNDO: DESTINO
+
+El vehículo será utilizado por la Arrendataria para el desarrollo de sus actividades comerciales y administrativas, incluyendo traslados relacionados con su actividad empresarial. La Arrendataria se obliga a utilizar el vehículo de manera responsable y conforme a la legislación vigente.
+
+TERCERO: PLAZO
+
+El presente contrato tendrá una duración de {{plazo}}, comenzando el día {{fecha_inicio}} y terminando el día {{fecha_termino}}. El contrato podrá renovarse por acuerdo escrito de ambas partes.
+
+CUARTO: RENTA DE ARRENDAMIENTO
+
+La Arrendataria pagará al Arrendador una renta mensual de ${{monto}} ({{monto_palabras}} pesos chilenos) mensuales. El pago se realizará dentro de los primeros {{dias_pago}} días de cada mes, mediante {{medio_pago}}.
+
+QUINTO: GASTOS DEL VEHÍCULO
+
+Serán de cargo de la Arrendataria los gastos asociados al uso del vehículo durante la vigencia del contrato, tales como combustible, peajes y TAG, estacionamientos, lavados y limpieza derivados del uso normal y mantenciones ordinarias derivadas del uso del vehículo. Los gastos extraordinarios o reparaciones que correspondan al propietario del vehículo serán acordados previamente entre las partes.
+
+SEXTO: SEGURO Y RESPONSABILIDAD
+
+El vehículo deberá mantenerse con los seguros y documentación exigidos por la legislación vigente. La Arrendataria deberá informar oportunamente al Arrendador cualquier accidente, daño, falla mecánica o siniestro que afecte al vehículo.
+
+SÉPTIMO: DEVOLUCIÓN
+
+Al término del contrato, la Arrendataria deberá devolver el vehículo al Arrendador en un estado razonablemente equivalente al recibido, considerando el desgaste normal derivado de su uso.
+
+OCTAVO: TÉRMINO ANTICIPADO
+
+Cualquiera de las partes podrá poner término anticipado al presente contrato, dando aviso escrito con una anticipación de 30 días, salvo acuerdo diferente entre las partes.
+
+NOVENO: DOMICILIO
+
+Para todos los efectos derivados del presente contrato, las partes fijan domicilio en la comuna de {{comuna}}, Chile.
+
+DÉCIMO: FIRMA
+
+En señal de aceptación, las partes firman el presente contrato en dos ejemplares del mismo tenor y fecha.
+
+EL ARRENDADOR
+____________________________
+Nombre: {{propietario_nombre}}
+RUT: {{propietario_rut}}
+
+LA ARRENDATARIA
+____________________________
+Razón Social: {{razon_social}}
+RUT: {{rut_empresa}}
+Representante: {{representante_nombre}}
+RUT representante: {{representante_rut}}

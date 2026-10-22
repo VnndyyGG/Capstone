@@ -1,6 +1,7 @@
 const express = require('express');
 const { hashPassword, verifyPassword, digest, token, profile } = require('./security');
 const v = require('./validation');
+const tpl = require('./templates');
 const now = () => new Date().toISOString();
 const ROLES = ['cliente', 'admin', 'comercial', 'finanzas'];
 
@@ -39,7 +40,7 @@ function createApp(db, options = {}) {
   const changeState = async (req, row, state, reason = '') => {
     await run('UPDATE cases SET status=?, updated_at=? WHERE id=?', state, now(), row.id);
     await audit(req.user.id, 'tramite.estado', 'tramite', row.id, { from: row.status, to: state, reason });
-    await notify(row.client_id, row.id, `El trámite ${row.folio} cambió a ${state}.`);
+    await notify(row.client_id, row.id, `El trámite ${row.folio} cambió a ${state}.${reason ? ' Motivo: ' + reason : ''}`);
   };
   app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
@@ -196,31 +197,60 @@ function createApp(db, options = {}) {
     await atomic(async () => { await run('UPDATE services SET name=?,price=?,active=?,requires_signature=? WHERE id=?', name, price, active, signature, serviceId); await audit(req.user.id, 'servicio.actualizado', 'servicio', serviceId); });
     res.json(await one('SELECT * FROM services WHERE id=?', serviceId));
   });
+  const templateRow = async (req, id) => {
+    const row = await one('SELECT * FROM templates WHERE id=?', id);
+    if (!row || (!row.active && req.user.role !== 'admin')) v.fail(404, 'NOT_FOUND', 'Plantilla no encontrada.');
+    return row;
+  };
+  const templateInput = (b, row = null) => {
+    const name = b.name === undefined && row ? row.name : v.text(b.name, 'name', 120);
+    const content = b.content === undefined && row ? row.content : v.text(b.content, 'content', 100000);
+    const category = b.category === undefined ? (row ? row.category : 'general') : tpl.category(b.category);
+    const description = b.description === undefined ? (row ? row.description : '') : v.text(b.description, 'description', 500, 0);
+    const fields = b.fields === undefined && row ? tpl.parseList(row.fields) : tpl.cleanFields(b.fields);
+    const clauses = b.clauses === undefined && row ? tpl.parseList(row.clauses) : tpl.cleanClauses(b.clauses);
+    tpl.assertContent(content, fields, clauses);
+    return { name, content, category, description, fields: JSON.stringify(fields), clauses: JSON.stringify(clauses) };
+  };
+  // Plantillas agrupadas por tipo de documento (categoría). Admin puede ver también las inactivas con ?active=all.
   app.get('/api/plantillas', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const { limit, offset } = v.pagination(req.query);
-    res.json({ items: await all('SELECT * FROM templates WHERE active=1 ORDER BY id LIMIT ? OFFSET ?', limit, offset) });
+    const everything = req.user.role === 'admin' && req.query.active === 'all';
+    const where = [everything ? '1=1' : 'active=1'], args = [];
+    if (req.query.category !== undefined) { where.push('category=?'); args.push(tpl.category(req.query.category)); }
+    const rows = await all(`SELECT id,slug,name,category,description,version,active,fields,clauses,content,updated_at FROM templates WHERE ${where.join(' AND ')} ORDER BY category,id LIMIT ? OFFSET ?`, ...args, limit, offset);
+    const counts = await all(`SELECT category, COUNT(*) AS total FROM templates WHERE ${everything ? '1=1' : 'active=1'} GROUP BY category ORDER BY category`);
+    res.json({ items: rows.map(r => tpl.present(r, true)), categorias: counts.map(c => ({ key: c.category, label: tpl.categoryLabel(c.category), total: c.total })) });
+  });
+  app.get('/api/plantillas/:id', roles('admin', 'comercial', 'cliente'), async (req, res) => {
+    res.json(tpl.present(await templateRow(req, v.id(req.params.id)), true));
+  });
+  // Genera el texto de un documento a partir de la plantilla: {values:{campo:valor}, clauses:[{key,values}]}.
+  // No guarda nada: el resultado se envía luego a POST /tramites/:id/documentos.
+  app.post('/api/plantillas/:id/render', roles('admin', 'comercial', 'cliente'), async (req, res) => {
+    res.json(tpl.render(await templateRow(req, v.id(req.params.id)), req.body || {}));
   });
   app.post('/api/plantillas', roles('admin'), async (req, res) => {
-    const b = req.body || {}, name = v.text(b.name, 'name', 120), content = v.text(b.content, 'content', 100000);
+    const b = req.body || {}, t = templateInput(b);
+    const code = b.slug === undefined ? null : tpl.slug(b.slug);
+    if (code && await one('SELECT id FROM templates WHERE slug=?', code)) v.fail(409, 'DUPLICATE', 'Ya existe una plantilla con ese slug.');
     const templateId = await atomic(async () => {
-      const id = await insert('INSERT INTO templates(name,content,updated_at) VALUES(?,?,?)', name, content, now());
+      const id = await insert('INSERT INTO templates(slug,name,category,description,fields,clauses,content,updated_at) VALUES(?,?,?,?,?,?,?,?)', code, t.name, t.category, t.description, t.fields, t.clauses, t.content, now());
       await audit(req.user.id, 'plantilla.creada', 'plantilla', id); return id;
     });
-    res.status(201).json(await one('SELECT * FROM templates WHERE id=?', templateId));
+    res.status(201).json(tpl.present(await one('SELECT * FROM templates WHERE id=?', templateId), true));
   });
   app.patch('/api/plantillas/:id', roles('admin'), async (req, res) => {
     const templateId = v.id(req.params.id), b = req.body || {}, row = await one('SELECT * FROM templates WHERE id=?', templateId);
     if (!row) v.fail(404, 'NOT_FOUND', 'Plantilla no encontrada.');
     if (v.integer(b.expectedVersion, 'expectedVersion') !== row.version) v.fail(409, 'VERSION_CONFLICT', 'La plantilla cambió. Vuelve a cargarla.');
-    const name = b.name === undefined ? row.name : v.text(b.name, 'name', 120);
-    const content = b.content === undefined ? row.content : v.text(b.content, 'content', 100000);
-    const active = b.active === undefined ? row.active : v.bool(b.active, 'active');
+    const t = templateInput(b, row), active = b.active === undefined ? row.active : v.bool(b.active, 'active');
     await atomic(async () => {
-      const updated = await run('UPDATE templates SET name=?,content=?,active=?,version=version+1,updated_at=? WHERE id=? AND version=?', name, content, active, now(), templateId, row.version);
+      const updated = await run('UPDATE templates SET name=?,category=?,description=?,fields=?,clauses=?,content=?,active=?,version=version+1,updated_at=? WHERE id=? AND version=?', t.name, t.category, t.description, t.fields, t.clauses, t.content, active, now(), templateId, row.version);
       if (!updated.changes) v.fail(409, 'VERSION_CONFLICT', 'La plantilla cambió. Vuelve a cargarla.');
       await audit(req.user.id, 'plantilla.actualizada', 'plantilla', templateId);
     });
-    res.json(await one('SELECT * FROM templates WHERE id=?', templateId));
+    res.json(tpl.present(await one('SELECT * FROM templates WHERE id=?', templateId), true));
   });
   app.get('/api/tramites', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const { limit, offset } = v.pagination(req.query);
@@ -232,14 +262,16 @@ function createApp(db, options = {}) {
     res.json({ items: await all(`SELECT c.*,u.name AS client_name,a.name AS assigned_name FROM cases c JOIN users u ON u.id=c.client_id LEFT JOIN users a ON a.id=c.assigned_id WHERE ${filter} ORDER BY c.id DESC LIMIT ? OFFSET ?`, ...args, limit, offset), total: (await one(`SELECT COUNT(*) AS n FROM cases c WHERE ${filter}`, ...args)).n, limit, offset });
   });
   app.post('/api/tramites', roles('cliente', 'admin'), async (req, res) => {
-    const b = req.body || {}, serviceId = v.integer(b.serviceId, 'serviceId'), title = v.text(b.title, 'title', 160), details = v.text(b.details || '', 'details', 5000, 0);
+    const b = req.body || {}, serviceId = v.integer(b.serviceId, 'serviceId'), details = v.text(b.details || '', 'details', 5000, 0);
     const clientId = req.user.role === 'cliente' ? req.user.id : v.integer(b.clientId, 'clientId');
     const service = await one('SELECT * FROM services WHERE id=? AND active=1', serviceId);
     if (!service) v.fail(404, 'NOT_FOUND', 'Servicio no disponible.');
+    // El título es solo una etiqueta para el listado: si el cliente no lo envía, se usa el nombre del servicio.
+    const title = b.title ? v.text(b.title, 'title', 160) : service.name;
     if (!await one("SELECT id FROM users WHERE id=? AND role='cliente' AND active=1", clientId)) v.fail(400, 'INVALID_CLIENT', 'Cliente no válido.');
     const caseId = await atomic(async () => {
       const timestamp = now();
-      const id = await insert("INSERT INTO cases(client_id,service_id,service_name,amount,requires_signature,title,details,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente_pago',?,?)", clientId, serviceId, service.name, service.price, service.requires_signature, title, details, timestamp, timestamp);
+      const id = await insert("INSERT INTO cases(client_id,service_id,service_name,amount,requires_signature,title,details,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'borrador',?,?)", clientId, serviceId, service.name, service.price, service.requires_signature, title, details, timestamp, timestamp);
       const folio = `EO-${timestamp.slice(0, 4)}-${String(id).padStart(6, '0')}`;
       await run('UPDATE cases SET folio=? WHERE id=?', folio, id);
       await audit(req.user.id, 'tramite.creado', 'tramite', id); await notify(clientId, id, `Se creó el trámite ${folio}.`); return id;
@@ -249,8 +281,13 @@ function createApp(db, options = {}) {
   app.get('/api/tramites/:id', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req);
     await audit(req.user.id, 'tramite.consulta', 'tramite', row.id);
-    res.json({ ...row, documents: await all('SELECT * FROM documents WHERE case_id=? ORDER BY version DESC', row.id),
-      attachments: await all('SELECT id,name,mime,sha256,created_at FROM attachments WHERE case_id=?', row.id) });
+    const svc = await one('SELECT template_id FROM services WHERE id=?', row.service_id);
+    res.json({
+      ...row,
+      template_id: svc ? svc.template_id : null,
+      documents: await all('SELECT * FROM documents WHERE case_id=? ORDER BY version DESC', row.id),
+      attachments: await all('SELECT id,name,mime,sha256,created_at FROM attachments WHERE case_id=?', row.id)
+    });
   });
   app.patch('/api/tramites/:id/asignacion', roles('admin'), async (req, res) => {
     const row = await caseFor(req, true), assignedId = v.integer(req.body?.assignedId, 'assignedId');
@@ -265,11 +302,12 @@ function createApp(db, options = {}) {
   app.patch('/api/tramites/:id/estado', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req, true), state = v.text(req.body?.status, 'status', 40);
     const reason = v.text(req.body?.reason || '', 'reason', 1000, 0);
-    const transitions = { pendiente_pago: ['cancelado'], en_redaccion: ['en_revision'], en_revision: ['observado', 'aprobado'], observado: ['en_redaccion'], aprobado: ['completado'] };
+    const transitions = { borrador: ['pendiente_pago', 'cancelado'], pendiente_pago: ['borrador', 'cancelado'], en_redaccion: ['en_revision'], en_revision: ['observado', 'aprobado'], observado: ['en_redaccion'], aprobado: ['completado'] };
     if (!transitions[row.status]?.includes(state)) v.fail(409, 'INVALID_TRANSITION', 'Cambio de estado no permitido.');
-    if (req.user.role === 'cliente' && !['en_revision', 'en_redaccion', 'cancelado'].includes(state)) v.fail(403, 'FORBIDDEN', 'No puedes aprobar tu propio trámite.');
+    if (req.user.role === 'cliente' && !['en_revision', 'en_redaccion', 'pendiente_pago', 'borrador', 'cancelado'].includes(state)) v.fail(403, 'FORBIDDEN', 'No puedes aprobar tu propio trámite.');
     if (state === 'cancelado' && await one("SELECT id FROM payments WHERE case_id=? AND status IN ('pendiente','aprobado')", row.id)) v.fail(409, 'PAYMENT_EXISTS', 'Resuelve el pago pendiente antes de cancelar.');
-    if (state === 'en_revision' && !await one('SELECT id FROM documents WHERE case_id=?', row.id)) v.fail(409, 'DOCUMENT_REQUIRED', 'Guarda un documento antes de enviar a revisión.');
+    if (['en_revision', 'pendiente_pago'].includes(state) && !await one('SELECT id FROM documents WHERE case_id=?', row.id)) v.fail(409, 'DOCUMENT_REQUIRED', 'Genera y guarda tu documento antes de continuar.');
+    if (state === 'borrador' && await one("SELECT id FROM payments WHERE case_id=? AND status IN ('pendiente','aprobado')", row.id)) v.fail(409, 'PAYMENT_EXISTS', 'Ya informaste un pago; no puedes volver a editar el documento.');
     if (state === 'observado' && !reason) v.fail(400, 'REASON_REQUIRED', 'Indica las observaciones.');
     if (state === 'completado' && row.requires_signature) v.fail(409, 'SIGNATURE_REQUIRED', 'Este trámite requiere firma electrónica verificada.');
     await atomic(async () => {
@@ -282,7 +320,7 @@ function createApp(db, options = {}) {
   });
   app.post('/api/tramites/:id/documentos', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req, true), b = req.body || {};
-    if (!['en_redaccion', 'observado'].includes(row.status)) v.fail(409, 'DOCUMENT_LOCKED', 'Solo se puede editar en redacción o con observaciones.');
+    if (!['borrador', 'en_redaccion', 'observado'].includes(row.status)) v.fail(409, 'DOCUMENT_LOCKED', 'Solo se puede editar en borrador o con observaciones.');
     const latest = (await one('SELECT COALESCE(MAX(version),0) AS version FROM documents WHERE case_id=?', row.id)).version;
     if (v.integer(b.expectedVersion, 'expectedVersion', 0) !== latest) v.fail(409, 'VERSION_CONFLICT', 'Existe una versión más reciente. Vuelve a cargar el documento.');
     const content = v.text(b.content, 'content', 100000);
@@ -302,7 +340,7 @@ function createApp(db, options = {}) {
   });
   app.post('/api/tramites/:id/adjuntos', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req, true), b = req.body || {};
-    if (!['pendiente_pago', 'en_redaccion', 'observado'].includes(row.status)) v.fail(409, 'DOCUMENT_LOCKED', 'No puedes agregar adjuntos en este estado.');
+    if (!['borrador', 'pendiente_pago', 'en_redaccion', 'observado'].includes(row.status)) v.fail(409, 'DOCUMENT_LOCKED', 'No puedes agregar adjuntos en este estado.');
     const name = v.text(b.name, 'name', 160).replace(/[^a-zA-Z0-9._-]/g, '_');
     if (typeof b.base64 !== 'string' || b.base64.length > 2800000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(b.base64)) v.fail(400, 'INVALID_FILE', 'Base64 inválido o archivo demasiado grande.');
     const bytes = Buffer.from(b.base64, 'base64');
@@ -363,7 +401,10 @@ function createApp(db, options = {}) {
       if (row.status !== 'pendiente_pago') v.fail(409, 'INVALID_STATE', 'Trámite no pendiente de pago.');
       await run('UPDATE payments SET status=?,reason=?,reviewed_by=?,reviewed_at=? WHERE id=?', state, reason, req.user.id, now(), paymentId);
       await audit(req.user.id, 'pago.revisado', 'pago', paymentId, { state, reason });
-      if (state === 'aprobado') await changeState(req, row, 'en_redaccion');
+      if (state === 'aprobado') {
+        const hayDocumento = await one('SELECT id FROM documents WHERE case_id=?', row.id);
+        await changeState(req, row, hayDocumento ? 'en_revision' : 'en_redaccion');
+      }
       else await notify(row.client_id, row.id, `El pago de ${row.folio} fue rechazado: ${reason}`);
     });
     res.json(await one('SELECT * FROM payments WHERE id=?', paymentId));
@@ -388,10 +429,12 @@ function createApp(db, options = {}) {
     res.json({ month, timezone: 'UTC', currency: 'CLP', ingresos: approved.total, pagosAprobados: approved.count, pagosRechazados: rejected.count, ticketPromedio: Math.round(approved.average) });
   });
   app.get('/api/indicadores', roles('admin'), async (req, res) => {
-    res.json({ tramitesPorEstado: await all('SELECT status,COUNT(*) AS total FROM cases GROUP BY status'),
+    res.json({
+      tramitesPorEstado: await all('SELECT status,COUNT(*) AS total FROM cases GROUP BY status'),
       clientesActivos: (await one("SELECT COUNT(*) AS n FROM users WHERE role='cliente' AND active=1")).n,
       tramitesSinAsignar: (await one("SELECT COUNT(*) AS n FROM cases WHERE assigned_id IS NULL AND status NOT IN ('cancelado','entregado','completado')")).n,
-      pagosPendientes: (await one("SELECT COUNT(*) AS n FROM payments WHERE status='pendiente'")).n });
+      pagosPendientes: (await one("SELECT COUNT(*) AS n FROM payments WHERE status='pendiente'")).n
+    });
   });
   app.get('/api/auditoria', roles('admin'), async (req, res) => {
     const { limit, offset } = v.pagination(req.query);

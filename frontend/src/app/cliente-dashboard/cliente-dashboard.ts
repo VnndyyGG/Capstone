@@ -23,7 +23,6 @@ export class ClienteDashboard implements OnInit {
   // Formulario "nuevo trámite"
   servicios = signal<Servicio[]>([]);
   servicioId = signal<number | null>(null);
-  titulo = signal('');
   detalles = signal('');
   creando = signal(false);
   errorNuevo = signal('');
@@ -53,20 +52,20 @@ export class ClienteDashboard implements OnInit {
 
   async crear() {
     const sid = this.servicioId();
-    if (sid === null || !this.titulo().trim()) {
-      this.errorNuevo.set('Elige un servicio e indica un título.');
+    if (sid === null) {
+      this.errorNuevo.set('Elige el servicio que necesitas.');
       return;
     }
     this.creando.set(true);
     this.errorNuevo.set('');
     try {
       const nuevo = await firstValueFrom(
-        this.tramitesService.crearTramite(sid, this.titulo().trim(), this.detalles().trim())
+        this.tramitesService.crearTramite(sid, this.detalles().trim())
       );
-      this.titulo.set(''); this.detalles.set(''); this.servicioId.set(null);
+      this.detalles.set(''); this.servicioId.set(null);
       this.cargarListado();
       this.activeTab.set('listado');
-      this.seleccionado.set(nuevo.id); // lo lleva directo al paso de pago
+      this.seleccionado.set(nuevo.id); // lo lleva directo a completar los datos del documento
     } catch (e) {
       this.errorNuevo.set(mensajeError(e));
     } finally {

@@ -34,6 +34,7 @@ export class TramiteDetalle implements OnInit {
   plantillaId = signal<number | null>(null);
   valores = signal<Record<string, string>>({});
   articulos = signal<ArticuloElegido[]>([]);   // artículos elegidos (plantillas con {{clausulas}})
+  rehacer = signal(false);                      // volver al formulario aunque ya exista un documento (solo en borrador)
 
   readonly clp = clp;
 
@@ -46,7 +47,7 @@ export class TramiteDetalle implements OnInit {
 
   ultimaVersion = computed(() => this.tramite()?.documents[0]?.version ?? 0);
   pagoDelTramite = computed(() => this.pagos().find(p => p.case_id === this.id()) ?? null);
-  puedeAdjuntar = computed(() => ['pendiente_pago', 'en_redaccion', 'observado'].includes(this.estado()));
+  puedeAdjuntar = computed(() => ['borrador', 'pendiente_pago', 'en_redaccion', 'observado'].includes(this.estado()));
   plantillaSel = computed(() => this.plantillas().find(p => p.id === this.plantillaId()) ?? null);
   // Plantillas agrupadas por tipo de documento (domicilio tributario, arriendos, societario...)
   grupos = computed(() => {
@@ -100,8 +101,8 @@ export class TramiteDetalle implements OnInit {
     const base = sel.content.replace(/\{\{\s*clausulas\s*\}\}/g, () => arts || '[Artículos]');
     return rellenar(base, this.campos(), this.valores());
   });
-  // Primera vez: formulario → documento generado. Con una versión ya guardada: se corrige el texto.
-  primeraRedaccion = computed(() => this.ultimaVersion() === 0);
+  // Primero: formulario → documento generado. Con una versión ya guardada: se edita el texto directamente.
+  primeraRedaccion = computed(() => this.ultimaVersion() === 0 || this.rehacer());
   textoAGuardar = computed(() => (this.primeraRedaccion() ? this.generado() : this.contenido()));
   hayCambiosSinGuardar = computed(
     () => this.textoAGuardar() !== (this.tramite()?.documents[0]?.content ?? '')
@@ -114,7 +115,7 @@ export class TramiteDetalle implements OnInit {
     this.notifs().find(n => n.case_id === this.id() && n.message.includes('observado'))?.message ?? ''
   );
 
-  constructor(private api: Tramites) {}
+  constructor(private api: Tramites) { }
 
   ngOnInit() { this.cargar(); }
 
@@ -135,6 +136,7 @@ export class TramiteDetalle implements OnInit {
       this.plantillas.set(plantillas.items);
       this.caps.set(caps);
       this.contenido.set(t.documents[0]?.content ?? '');
+      if (t.template_id && this.plantillaId() === null && plantillas.items.some(p => p.id === t.template_id)) this.elegirPlantilla(String(t.template_id));
     } catch (e) {
       this.error.set(mensajeError(e));
     } finally {
@@ -198,6 +200,35 @@ export class TramiteDetalle implements OnInit {
     this.articulos.update(a => a.map((x, j) => (j === i ? { ...x, values: { ...x.values, [k]: v } } : x)));
   }
   setValor(k: string, v: string) { this.valores.update(o => ({ ...o, [k]: v })); }
+
+  /** Paso 1: del formulario al documento. El backend valida RUT, correo y opciones; se guarda como versión nueva. NO cobra. */
+  generarDocumento() {
+    return this.ejecutar(async () => {
+      const texto = await this.generarEnServidor();
+      await firstValueFrom(this.api.guardarDocumento(this.id(), texto, this.ultimaVersion()));
+      this.rehacer.set(false);
+    }, 'Documento generado. Revísalo y edítalo si necesitas ajustar algo; después continúas al pago.');
+  }
+
+  reabrirFormulario() {
+    if (!confirm('Volver al formulario generará el documento de nuevo y reemplazará los cambios que hiciste al texto. ¿Continuar?')) return;
+    this.rehacer.set(true);
+  }
+
+  /** Paso 3: con el documento listo, recién ahora se pasa al pago. */
+  continuarAlPago() {
+    return this.ejecutar(async () => {
+      if (this.hayCambiosSinGuardar()) {
+        await firstValueFrom(this.api.guardarDocumento(this.id(), this.textoAGuardar(), this.ultimaVersion()));
+      }
+      await firstValueFrom(this.api.cambiarEstado(this.id(), 'pendiente_pago'));
+    }, 'Documento guardado. Ahora realiza el pago para enviarlo a revisión.');
+  }
+
+  /** Antes de pagar, el cliente puede volver a editar (si ya informó un pago, el backend lo impide). */
+  volverAEditar() {
+    return this.ejecutar(() => firstValueFrom(this.api.cambiarEstado(this.id(), 'borrador')));
+  }
 
   guardar() {
     return this.ejecutar(

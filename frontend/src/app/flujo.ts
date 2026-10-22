@@ -1,5 +1,6 @@
 
 export const ESTADOS: Record<string, { label: string; clase: string }> = {
+  borrador: { label: 'Borrador', clase: 'redaccion' },
   pendiente_pago: { label: 'Pendiente de pago', clase: 'pendiente' },
   en_redaccion: { label: 'En redacción', clase: 'redaccion' },
   en_revision: { label: 'En revisión', clase: 'redaccion' },
@@ -20,8 +21,8 @@ export interface Paso {
 
 export function pasosDe(requiereFirma: boolean): Paso[] {
   const pasos: Paso[] = [
+    { clave: 'redaccion', label: 'Datos del documento', detalle: 'Completas los datos y editas el documento' },
     { clave: 'pago', label: 'Pago', detalle: 'Transferencia verificada por Finanzas' },
-    { clave: 'redaccion', label: 'Datos del documento', detalle: 'Completas los datos y se genera el documento' },
     { clave: 'revision', label: 'Revisión', detalle: 'Un ejecutivo revisa el documento' },
     { clave: 'aprobado', label: 'Aprobado', detalle: 'Documento aprobado' },
   ];
@@ -36,8 +37,9 @@ export function pasosDe(requiereFirma: boolean): Paso[] {
 export function indiceActual(estado: string, requiereFirma: boolean): number {
   const total = pasosDe(requiereFirma).length;
   switch (estado) {
-    case 'pendiente_pago': return 0;
-    case 'en_redaccion': return 1;
+    case 'borrador': return 0;
+    case 'pendiente_pago': return 1;
+    case 'en_redaccion': return 2; // corrigiendo tras una observación
     case 'en_revision':
     case 'observado': return 2;
     case 'aprobado': return 4; // aprobado listo; sigue la firma (si aplica) o el cierre

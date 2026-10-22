@@ -1,0 +1,101 @@
+CONTRATO DE SERVICIOS EASY OFFICE Nro. {{folio}}.-
+
+En Santiago, a {{fecha_contrato}}, entre EASY OFFICE SpA, rol único tributario número 76.767.272-1, representada por don MARCO ANTONIO ESCOBAR DONOSO, chileno, divorciado, ingeniero de ejecución, cédula de identidad número 10.398.885-3, ambos con domicilio en BLANCO N°1215, OFICINA N°405, comuna de VALPARAÍSO, región de VALPARAÍSO, en adelante “EASY OFFICE”; y, por la otra, la empresa {{razon_social}}, rol único tributario número {{rut_empresa}}, de Giro {{giro}} representada legalmente por don(a) {{representante_nombre}} cédula de identidad número {{representante_rut}}, con su domicilio particular en {{representante_domicilio}}, comuna de {{representante_comuna}}, región {{representante_region}}, en adelante “EL CLIENTE”; han convenido lo siguiente:
+
+PRIMERO:
+
+En virtud del presente contrato EASY OFFICE entrega en el/los servicio(s) de: {{servicios_nombres}} en {{sucursal_direccion}} comuna de {{sucursal_comuna}} región {{sucursal_region}} y en las condiciones que expresan las cláusulas del presente contrato de servicios y su Anexo 1. Este instrumento es de carácter confidencial y no podrán las partes divulgarlo sin autorización escrita de la otra, excepto que, por ley, la autoridad competente así lo requiera. Se comprende en la referida excepción, la presentación del presente contrato ante el Servicio de Impuestos Internos y municipalidades, para efectos de acreditar el domicilio, actividad económica u obtención de patente comercial de EL CLIENTE ante dicha autoridad.
+
+SEGUNDO:
+
+El domicilio tributario, solo se podrá usar como BODEGA DE ALMACENAJE en las condiciones descritas en ANEXO 1 de este instrumento y que para todo efecto legal es parte integrante de él. A EL CLIENTE le está prohibido ceder a cualquier título el presente contrato de servicios. Atendido que se trata del lugar donde EL CLIENTE realizará su actividad principal, se obliga a mantener copia de toda documentación tributaria de los bienes almacenados en la bodega. El incumplimiento de esta norma legal desliga a EASY OFFICE de toda responsabilidad ante fiscalizaciones por parte del Servicio de Impuestos Internos y sus consecuencias, basados en el incumplimiento de esta cláusula vinculante.
+
+TERCERO:
+
+El precio de cada servicio y su ciclo de pago será como se indica a continuación:
+
+SERVICIO(S) | PRECIO(S) | CICLO
+
+{{servicios_tabla}}
+
+Cantidad(es) que se cancela(n) anticipadamente dentro de las 24 horas previas al inicio de cada período, mediante depósito o transferencia electrónica efectuada a la cuenta corriente N° {{cuenta_bancaria}}. EL CLIENTE se obliga a enviar un correo electrónico a pagos@easyoffice.cl informando cada pago realizado. Para tales efectos, el comprobante de depósito o transferencia servirá como suficiente recibo de pago, debiendo EASY OFFICE emitir la correspondiente factura como respaldo de los servicios prestados, dentro del plazo de 3 días corridos desde la recepción del pago. EASY OFFICE, se reserva el derecho de limitar, negar o suspender los servicios, pudiendo incluso poner término al presente contrato de servicios mientras exista(n) deuda(s) pendiente(s) de pago, no se renueve el presente instrumento o si el cliente no cumple con este Contrato de Servicios.
+
+CUARTO:
+
+EL CLIENTE, faculta especialmente a EASY OFFICE y lo autoriza irrevocablemente para:
+
+1)Informar, a todo evento, al Servicio de Impuestos Internos, Municipalidad, Tesorería General de la República y demás organismos que correspondan en función del giro o actividad de El Cliente, las variaciones o término, anticipado o no, del presente contrato de servicios y, en particular, denunciar el uso Indebido y no autorizado del Domicilio Tributario, cuando corresponda.
+
+2) EASY OFFICE y EL CLIENTE establecen los siguientes medios válidos para toda comunicación y notificaciones entre las partes:
+
+Correo Electrónico : backoffice@easyoffice.cl
+
+Fono Móvil / WhatsApp : +56 2 22777781
+
+Correo Electrónico : {{cliente_email}}
+
+Fono Móvil / WhatsApp : +56 {{cliente_celular}}
+
+Se establece la obligación de dar inmediato aviso ante cualquier modificación o cambio que ocurra con alguno ellos.
+
+QUINTO:
+
+El presente contrato de servicios entrará en vigencia el {{fecha_contrato}}. Su duración es la descrita en el punto 3 de este instrumento. Al término de dicho plazo se renovará automáticamente por igual período, pudiendo ponerle término mediante notificación escrita a través de carta certificada, la que deberá ser enviada al domicilio individualizado de cada parte con a lo menos 30 días de anticipación a la fecha efectiva de vencimiento.
+
+SEXTO:
+
+EASY OFFICE no se hace responsable de robos, hurtos, daños ni perjuicios de pertenencias o equipos personales, ni de las eventualidades que puedan producirse con motivo de los negocios que EL CLIENTE genere dentro del recinto. EASY OFFICE no será responsable de ninguna pérdida sostenida que resulte del hecho de no brindar un servicio por razones de una descompostura mecánica, huelga, demora, terremoto, inundación, tsunami, incumplimiento de cualquier miembro del equipo o proveedor en realizar sus obligaciones o por cualquier evento fortuito, sin que la enumeración sea limitativa si no meramente enunciativa.
+
+SÉPTIMO:
+
+La personería de don Marco Antonio Escobar Donoso para representar a EASY OFFICE SpA, consta en estatuto actualizado del Registro de Empresas y Sociedades, conforme a la Ley Nº20.659.- del Ministerio de Economía, Fomento y Turismo, ante/en www.tuempresaenundia.cl con fecha 10 de agosto de 2017. La Personería de Don {{representante_nombre}} para representar a {{razon_social}}, constan en escritura pública/estatuto actualizado de fecha {{fecha_escritura}} en el/ante sitio/notaría {{sitio_notaria}}. El presente contrato es autentificado con Firma Electrónica Avanzada, conforme a la ley N°19.799 sobre documentos, firmas electrónicas y empresas certificadoras de firmas electrónicas
+
+ANEXO 1
+
+SERVICIO(S) ASOCIADO(S) AL CONTRATO DE SERVICIOS Nro.: {{folio}}
+
+SERVICIO | CONTENIDO
+
+{{servicios_descripcion}}
+
+SERVICIOS DE CARGO COMPLEMENTARIO:
+
+SERVICIOS ADICIONALES COMPLEMENTARIOS | Precio Unitario
+
+FIRMA ELECTRÓNICA AVANZADA Autentificado con Clave Única y Red de Notarios digitales. Trámite 100% online. | $5.900
+
+BOLSA DE 10 FIRMAS ELECTRÓNICAS AVANZADAS Autentificado con Clave Única y red de notarios digitales. Vigencia 6 meses, renovables. | $29.990
+
+FIRMA ELECTRÓNICA AVANZADA PARA CONTRATOS Valores desde el monto publicado y hasta 3 firmantes. Los contratos son instrumentos privados que regulan relaciones y acuerdos entre dos partes, respecto de actividades laborales, servicios, compra y venta de bienes, arriendo de vehículo y propiedades, entre otros. Trámite 100% online. | $14.900
+
+DECLARACIONES JURADAS DE UNA FIRMA, desde | $9.900
+
+DECLARACIONES JURADAS DE DOS FIRMAS | $14.900
+
+PODERES Y AUTORIZACIONES. Valores desde el monto publicado, dependiendo del tipo de instrumento. Plazo de 48 horas hábiles y disponibilidad según Red de Notarios Digitales. Trámite 100% online. | $9.900
+
+CERTIFICACIÓN NOTARIAL Valores desde el monto publicado, dependiendo del tipo de instrumento. Plazo de 48 horas hábiles y disponibilidad según Red de Notarios Digitales. Trámite 100% online. | $14.900
+
+PROTOCOLIZACIÓN NOTARIAL Valores desde el monto publicado, dependiendo del tipo de instrumento. Plazo de 48 horas hábiles y disponibilidad según Red de Notarios Digitales. Trámite 100% online. | $14.900
+
+AUTENTIFICACIÓN NOTARIAL Valores desde el monto publicado, dependiendo del tipo de instrumento. Plazo de 48 horas hábiles y disponibilidad según Red de Notarios Digitales. Trámite 100% online. | $14.900
+
+CREACIÓN EMPRESA EN 1 DÍA, desde | $49.900
+
+SERVICIO DE REMUNERACIONES, por persona desde | $14.900
+
+SERVICIO DE CONTABILIDAD, desde | $19.900
+
+IMPRESIÓN/DIGITALIZACIÓN DE DOCUMENTOS, cada página | $1.900
+
+* TODOS LOS VALORES MAS I.V.A.
+
+A U T O R I Z A C I Ó N
+
+EN {{sucursal_comuna}}, A {{fecha_contrato}}, MARCO ANTONIO ESCOBAR DONOSO, ROL ÚNICO TRIBUTARIO NÚMERO 10.398.885-3, CHILENO, DIVORCIADO, INGENIERO DE EJECUCIÓN, CON DOMICILIO EN CALLE BLANCO N°1215, OFICINA N°405, COMUNA DE VALPARAÍSO, REGIÓN DE VALPARAÍSO; VIENEN A AUTORIZAR POR ({{duracion_meses}} MESES) A LA EMPRESA {{razon_social}} ROL ÚNICO TRIBUTARIO NÚMERO {{rut_empresa}} REPRESENTADA LEGALMENTE POR DON(A) {{representante_nombre}} CÉDULA DE IDENTIDAD NÚMERO {{representante_rut}}, PARA EL USO DE LA BODEGA UBICADA EN {{bodega_direccion}} COMUNA DE {{bodega_comuna}}, REGIÓN {{bodega_region}}, INDIVIDUALIZADA CON EL ROL DE AVALÚO FISCAL N° {{bodega_rol}}, de {{bodega_comuna}}.
+
+LA PRESENTE AUTORIZACIÓN VENCE EL DÍA {{fecha_vencimiento}} Y SE RENOVARÁ AUTOMÁTICAMENTE POR IGUAL PERÍODO ({{duracion_meses}} MESES), SALVO QUE SE PONGA TÉRMINO.
+
+EL PRESENTE INSTRUMENTO ES PARA SER PRESENTADO EXCLUSIVAMENTE ANTE EL SERVICIO DE IMPUESTOS INTERNOS Y MUNICIPALIDADES.
+
+SE PERMITE EL USO DE ESTA IMAGEN DE MI CÉDULA DE IDENTIDAD, A LA EMPRESA {{razon_social}} ROL ÚNICO TRIBUTARIO {{rut_empresa}} REPRESENTADA LEGALMENTE POR DON(A) {{representante_nombre}} CÉDULA DE IDENTIDAD NÚMERO {{representante_rut}}, PARA SER USADA EXCLUSIVAMENTE ANTE EL SERVICIO DE IMPUESTOS INTERNOS, COMO COMPLEMENTO A LA PRESENTE AUTORIZACION.

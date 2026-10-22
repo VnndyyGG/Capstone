@@ -8,6 +8,7 @@
     "dev": "node --watch --env-file-if-exists=.env server.js",
     "setup": "node --env-file-if-exists=.env scripts/setup.js",
     "setup:demo": "node --env-file-if-exists=.env scripts/setup.js --demo",
+    "seed:templates": "node --env-file-if-exists=.env scripts/seed-templates.js",
     "test": "node --test test/*.test.js"
   },
   "keywords": [],

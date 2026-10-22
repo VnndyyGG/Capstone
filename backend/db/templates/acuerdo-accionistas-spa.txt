@@ -1,0 +1,9 @@
+ACUERDO DE ACCIONISTAS DE {{razon_social}}
+
+{{ciudad}}, a {{fecha_acuerdo}}, la sociedad {{razon_social}} que se encuentra constituida por {{numero_accionistas}} accionista(s), los cuales se individualizan a continuación: {{accionistas_detalle}}, acogiéndose a las disposiciones de la ley 20.659 y el artículo 427 del Código de Comercio, acuerdan modificar unánimemente las siguientes materias de los estatutos:
+
+{{clausulas}}
+
+Finalmente, los accionistas {{accionistas_facultan}}, facultan a don {{apoderado_nombre}} cédula nacional de identidad número {{apoderado_rut}}, para que efectúe las modificaciones y suscripciones ante el Registro de Empresas y Sociedades del presente acto.
+
+{{firmas}}

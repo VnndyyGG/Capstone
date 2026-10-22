@@ -39,12 +39,18 @@
       <section class="panel">
         @if (pagoDelTramite()?.status === 'pendiente') {
           <h2>Estamos verificando tu transferencia</h2>
-          <p>Referencia informada: <strong>{{ pagoDelTramite()!.reference }}</strong>. Cuando Finanzas confirme el abono podrás redactar tu documento.</p>
+          <p>Referencia informada: <strong>{{ pagoDelTramite()!.reference }}</strong>. Cuando Finanzas confirme el abono, tu documento pasa a revisión.</p>
         } @else {
           @if (pagoDelTramite()?.status === 'rechazado') {
             <p class="notice warn">Tu última transferencia fue rechazada: {{ pagoDelTramite()!.reason }}. Puedes informar otra referencia.</p>
           }
-          <h2>Paga tu trámite</h2>
+          <h2>Tu documento está listo. Ahora paga para enviarlo a revisión</h2>
+          @if (t.documents[0]; as doc) {
+            <details class="muted">
+              <summary>Ver el documento (v{{ doc.version }})</summary>
+              <pre class="preview">{{ doc.content }}</pre>
+            </details>
+          }
           <div class="pay-box">
             <div>
               <div class="amount-label">Monto a transferir</div>
@@ -62,12 +68,14 @@
           </div>
           <div class="acciones">
             <button class="btn-primary" [disabled]="ocupado()" (click)="informarPago()">Informar transferencia</button>
+            <button class="btn-ghost" [disabled]="ocupado()" (click)="volverAEditar()">← Volver a editar el documento</button>
             <button class="btn-ghost" [disabled]="ocupado()" (click)="cancelar()">Cancelar trámite</button>
           </div>
         }
       </section>
     }
 
+    @case ('borrador') { <ng-container *ngTemplateOutlet="editor" /> }
     @case ('en_redaccion') { <ng-container *ngTemplateOutlet="editor" /> }
     @case ('observado') {
       @if (observacion()) { <p class="notice warn">{{ observacion() }}</p> }
@@ -143,7 +151,8 @@
     <section class="panel">
       @if (primeraRedaccion()) {
         <h2>Completa los datos de tu documento</h2>
-        <p>Elige el documento y llena los datos. El texto se genera automáticamente desde el formato estándar de EasyOffice.</p>
+        <p>Llena los datos y genera el documento. Después podrás leerlo y editarlo directamente. Todavía no se te cobra nada.</p>
+        @if (!t.template_id) {
         <div class="field full">
           <label for="plantilla">Documento</label>
           <select id="plantilla" [ngModel]="plantillaId()?.toString() ?? ''" (ngModelChange)="elegirPlantilla($event)">
@@ -156,6 +165,7 @@
           </select>
           @if (plantillaSel()?.description) { <p class="muted">{{ plantillaSel()!.description }}</p> }
         </div>
+        }
         @if (plantillaSel()) {
           @for (s of secciones(); track s.titulo) {
             <h3>{{ s.titulo }}</h3>
@@ -209,18 +219,29 @@
           <pre class="preview">{{ generado() }}</pre>
         }
         <div class="acciones">
-          <button class="btn-primary" [disabled]="ocupado() || !plantillaSel() || !puedeEnviar()" (click)="enviarARevision()">Generar documento y enviar a revisión</button>
+          <button class="btn-primary" [disabled]="ocupado() || !plantillaSel() || !puedeEnviar()" (click)="generarDocumento()">Generar documento</button>
+          @if (rehacer()) { <button class="btn-ghost" [disabled]="ocupado()" (click)="rehacer.set(false)">Cancelar y mantener mi texto</button> }
           @if (plantillaSel() && faltantes().length) { <span class="muted">Faltan {{ faltantes().length }} campo(s): {{ faltantes().slice(0, 3).join(', ') }}{{ faltantes().length > 3 ? '…' : '' }}</span> }
         </div>
       } @else {
-        <h2>Corrige tu documento</h2>
+        @if (estado() === 'borrador') {
+          <h2>Revisa y edita tu documento</h2>
+          <p>Este es el texto generado con tus datos. Puedes modificarlo directamente. Cuando esté listo, continúas al pago.</p>
+        } @else {
+          <h2>Corrige tu documento</h2>
+        }
         <div class="field full">
           <label for="contenido">Contenido (texto plano) · versión guardada: v{{ ultimaVersion() }}</label>
           <textarea id="contenido" rows="16" [ngModel]="contenido()" (ngModelChange)="contenido.set($event)"></textarea>
         </div>
         <div class="acciones">
           <button class="btn-ghost" [disabled]="ocupado() || !puedeEnviar() || !hayCambiosSinGuardar()" (click)="guardar()">Guardar borrador</button>
-          <button class="btn-primary" [disabled]="ocupado() || !puedeEnviar()" (click)="enviarARevision()">Enviar a revisión</button>
+          @if (estado() === 'borrador') {
+            <button class="btn-ghost" [disabled]="ocupado()" (click)="reabrirFormulario()">Volver al formulario</button>
+            <button class="btn-primary" [disabled]="ocupado() || !puedeEnviar()" (click)="continuarAlPago()">Continuar al pago</button>
+          } @else {
+            <button class="btn-primary" [disabled]="ocupado() || !puedeEnviar()" (click)="enviarARevision()">Enviar a revisión</button>
+          }
         </div>
       }
     </section>
