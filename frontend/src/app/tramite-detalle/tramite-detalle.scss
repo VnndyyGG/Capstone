@@ -1,0 +1,37 @@
+.volver { margin-bottom: 18px; }
+
+.stepper {
+  list-style: none; margin: 8px 0 28px; padding: 0;
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.stepper li {
+  flex: 1 1 130px; display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; align-items: start;
+  padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--white);
+  color: var(--ink-soft);
+}
+.dot {
+  grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  background: var(--surface); border: 1.5px solid var(--border);
+}
+.step-label { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.step-detail { font-size: 11.5px; }
+.done .dot { background: var(--green-status); border-color: var(--green-status); color: #fff; }
+.current { border-color: var(--green-1); background: var(--green-bg); }
+.current .dot { border-color: var(--green-1); color: var(--green-2); background: #fff; }
+.current.warn { border-color: var(--amber); background: var(--amber-bg); }
+.current.warn .dot { border-color: var(--amber); color: var(--amber); }
+
+.panel { margin: 0 0 22px; padding: 20px 22px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
+.panel h2 { margin: 0 0 8px; font-size: 18px; }
+.panel h3 { margin: 0 0 10px; font-size: 15px; }
+.acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+.field textarea { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.lista { list-style: none; padding: 0; margin: 0 0 12px; }
+.lista li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.notice { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin: 0 0 16px; }
+.notice.ok { background: var(--green-bg); color: var(--green-status); }
+.notice.warn { background: var(--amber-bg); color: var(--amber); }
+.articulo { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; display: grid; gap: 10px; }
+.articulo > strong { display: inline-block; }

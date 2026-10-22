@@ -1,0 +1,228 @@
+<button class="btn-ghost volver" (click)="cerrar.emit()">← Volver a mis trámites</button>
+
+@if (cargando() && !tramite()) {
+  <p>Cargando trámite...</p>
+} @else if (tramite(); as t) {
+
+  <div class="page-head">
+    <div>
+      <h1>{{ t.title }}</h1>
+      <p><span class="folio">{{ t.folio }}</span> · {{ t.service_name }} · {{ clp(t.amount) }}</p>
+    </div>
+    <span class="badge" [class]="estadoClase()">{{ estadoLabel() }}</span>
+  </div>
+
+  <!-- ===== Línea de progreso: depende de si el servicio requiere firma ===== -->
+  @if (estado() !== 'cancelado') {
+    <ol class="stepper">
+      @for (p of pasos(); track p.clave; let i = $index) {
+        <li [class.done]="i < actual()" [class.current]="i === actual()"
+            [class.warn]="i === actual() && estado() === 'observado'">
+          <span class="dot">{{ i < actual() ? '✓' : i + 1 }}</span>
+          <span class="step-label">{{ p.label }}</span>
+          <span class="step-detail">{{ p.detalle }}</span>
+        </li>
+      }
+    </ol>
+    @if (requiereFirma()) {
+      <p class="muted nota-flujo">Este documento se firma con firma electrónica avanzada (Ley 19.799). No interviene notario.</p>
+    }
+  }
+
+  @if (error()) { <p class="login-error">{{ error() }}</p> }
+  @if (aviso()) { <p class="notice ok">{{ aviso() }}</p> }
+
+  <!-- ===== Panel de acción según el estado ===== -->
+  @switch (estado()) {
+
+    @case ('pendiente_pago') {
+      <section class="panel">
+        @if (pagoDelTramite()?.status === 'pendiente') {
+          <h2>Estamos verificando tu transferencia</h2>
+          <p>Referencia informada: <strong>{{ pagoDelTramite()!.reference }}</strong>. Cuando Finanzas confirme el abono podrás redactar tu documento.</p>
+        } @else {
+          @if (pagoDelTramite()?.status === 'rechazado') {
+            <p class="notice warn">Tu última transferencia fue rechazada: {{ pagoDelTramite()!.reason }}. Puedes informar otra referencia.</p>
+          }
+          <h2>Paga tu trámite</h2>
+          <div class="pay-box">
+            <div>
+              <div class="amount-label">Monto a transferir</div>
+              <div class="amount">{{ clp(t.amount) }}</div>
+            </div>
+            <div class="webpay-mark">
+              @if (caps()?.payments?.webpay) { Pago con Webpay disponible }
+              @else { <strong>Webpay</strong> aún no está disponible. Paga por transferencia. }
+            </div>
+          </div>
+          <p class="muted">Transfiere a: Cuenta Corriente / Chequera Electrónica N° 25770158951, Banco Estado, a nombre de EASY OFFICE SpA, RUT 76.767.272-1.</p>
+          <div class="field full">
+            <label for="ref">Referencia o N° de operación de tu transferencia</label>
+            <input id="ref" type="text" maxlength="120" [ngModel]="referencia()" (ngModelChange)="referencia.set($event)">
+          </div>
+          <div class="acciones">
+            <button class="btn-primary" [disabled]="ocupado()" (click)="informarPago()">Informar transferencia</button>
+            <button class="btn-ghost" [disabled]="ocupado()" (click)="cancelar()">Cancelar trámite</button>
+          </div>
+        }
+      </section>
+    }
+
+    @case ('en_redaccion') { <ng-container *ngTemplateOutlet="editor" /> }
+    @case ('observado') {
+      @if (observacion()) { <p class="notice warn">{{ observacion() }}</p> }
+      @else { <p class="notice warn">Tu documento fue observado. Corrígelo y vuelve a enviarlo a revisión.</p> }
+      <ng-container *ngTemplateOutlet="editor" />
+    }
+
+    @case ('en_revision') {
+      <section class="panel">
+        <h2>Tu documento está en revisión</h2>
+        <p>Un ejecutivo comercial lo está revisando. No puedes editarlo mientras tanto; te avisaremos si hay observaciones.</p>
+      </section>
+    }
+
+    @case ('aprobado') {
+      <section class="panel">
+        <h2>Documento aprobado</h2>
+        @if (requiereFirma()) {
+          @if (caps()?.firmaElectronicaAvanzada) {
+            <p>Tu documento está listo para la firma electrónica avanzada. Te avisaremos cuando esté disponible para firmar.</p>
+          } @else {
+            <p>Tu documento ya fue aprobado. El último paso es la firma electrónica avanzada, que aún no está habilitada en la plataforma. Tu trámite queda en espera y te avisaremos.</p>
+          }
+        } @else {
+          <p>Tu documento fue aprobado y este trámite no requiere firma. Un ejecutivo lo cerrará en breve.</p>
+        }
+      </section>
+    }
+
+    @case ('completado') {
+      <section class="panel">
+        <h2>Trámite completado</h2>
+        @if (pagoDelTramite()?.status === 'aprobado') {
+          <button class="btn-ghost" (click)="bajarComprobante(pagoDelTramite()!.id)">Descargar comprobante de pago</button>
+        }
+      </section>
+    }
+
+    @case ('cancelado') {
+      <section class="panel"><h2>Trámite cancelado</h2><p>Este trámite ya no admite cambios.</p></section>
+    }
+  }
+
+  <!-- ===== Versiones y adjuntos ===== -->
+  @if (t.documents.length) {
+    <section class="panel">
+      <h3>Versiones del documento</h3>
+      <ul class="lista">
+        @for (d of t.documents; track d.id) {
+          <li>v{{ d.version }} · {{ d.created_at.slice(0, 16).replace('T', ' ') }}
+            <button class="row-action" (click)="bajarDocumento(d.id, d.version)">Descargar</button></li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (t.attachments.length || puedeAdjuntar()) {
+    <section class="panel">
+      <h3>Adjuntos (PDF, máx. 2 MiB)</h3>
+      <ul class="lista">
+        @for (a of t.attachments; track a.id) {
+          <li>{{ a.name }} <button class="row-action" (click)="bajarAdjunto(a.id, a.name)">Descargar</button></li>
+        }
+      </ul>
+      @if (puedeAdjuntar()) {
+        <input type="file" accept="application/pdf" [disabled]="ocupado()" (change)="onArchivo($event)">
+      }
+    </section>
+  }
+
+  <!-- ===== Datos del documento (redacción / observado) ===== -->
+  <ng-template #editor>
+    <section class="panel">
+      @if (primeraRedaccion()) {
+        <h2>Completa los datos de tu documento</h2>
+        <p>Elige el documento y llena los datos. El texto se genera automáticamente desde el formato estándar de EasyOffice.</p>
+        <div class="field full">
+          <label for="plantilla">Documento</label>
+          <select id="plantilla" [ngModel]="plantillaId()?.toString() ?? ''" (ngModelChange)="elegirPlantilla($event)">
+            <option value="">Selecciona un documento…</option>
+            @for (g of grupos(); track g.label) {
+              <optgroup [label]="g.label">
+                @for (p of g.items; track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+              </optgroup>
+            }
+          </select>
+          @if (plantillaSel()?.description) { <p class="muted">{{ plantillaSel()!.description }}</p> }
+        </div>
+        @if (plantillaSel()) {
+          @for (s of secciones(); track s.titulo) {
+            <h3>{{ s.titulo }}</h3>
+            <div class="form-grid">
+              @for (c of s.campos; track c.key) {
+                <div class="field" [class.full]="c.type === 'textarea'">
+                  <label [attr.for]="'c-' + c.key">{{ c.label }}@if (!c.required) { <span class="muted"> (opcional)</span> }</label>
+                  @switch (c.type) {
+                    @case ('textarea') {
+                      <textarea [id]="'c-' + c.key" rows="4" [placeholder]="c.placeholder ?? ''" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)"></textarea>
+                    }
+                    @case ('select') {
+                      <select [id]="'c-' + c.key" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                        <option value="">Selecciona…</option>
+                        @for (o of c.options ?? []; track o) { <option [value]="o">{{ o }}</option> }
+                      </select>
+                    }
+                    @default {
+                      <input [id]="'c-' + c.key" [type]="inputType(c)" [placeholder]="c.placeholder ?? (c.type === 'rut' ? '12.345.678-5' : '')" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+          @if (usaArticulos()) {
+            <h3>Artículos del acuerdo</h3>
+            <div class="field full">
+              <label for="agregar-art">Agregar artículo según el trámite</label>
+              <select id="agregar-art" #selArt (change)="agregarArticulo(selArt.value); selArt.value = ''">
+                <option value="">Selecciona un artículo…</option>
+                @for (d of plantillaSel()!.clauses; track d.key) { <option [value]="d.key">{{ d.label }}</option> }
+              </select>
+            </div>
+            @for (a of articulos(); track $index; let i = $index) {
+              <div class="articulo">
+                <strong>{{ i + 1 }}. {{ defArticulo(a.key)?.label }}</strong>
+                <button type="button" class="btn-ghost" (click)="quitarArticulo(i)">Quitar</button>
+                <div class="form-grid">
+                  @for (c of defArticulo(a.key)?.fields ?? []; track c.key) {
+                    <div class="field">
+                      <label [attr.for]="'a' + i + '-' + c.key">{{ c.label }}</label>
+                      <input [id]="'a' + i + '-' + c.key" type="text" [ngModel]="a.values[c.key] ?? ''" (ngModelChange)="setValorArticulo(i, c.key, $event)">
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          }
+          <h3>Vista previa</h3>
+          <pre class="preview">{{ generado() }}</pre>
+        }
+        <div class="acciones">
+          <button class="btn-primary" [disabled]="ocupado() || !plantillaSel() || !puedeEnviar()" (click)="enviarARevision()">Generar documento y enviar a revisión</button>
+          @if (plantillaSel() && faltantes().length) { <span class="muted">Faltan {{ faltantes().length }} campo(s): {{ faltantes().slice(0, 3).join(', ') }}{{ faltantes().length > 3 ? '…' : '' }}</span> }
+        </div>
+      } @else {
+        <h2>Corrige tu documento</h2>
+        <div class="field full">
+          <label for="contenido">Contenido (texto plano) · versión guardada: v{{ ultimaVersion() }}</label>
+          <textarea id="contenido" rows="16" [ngModel]="contenido()" (ngModelChange)="contenido.set($event)"></textarea>
+        </div>
+        <div class="acciones">
+          <button class="btn-ghost" [disabled]="ocupado() || !puedeEnviar() || !hayCambiosSinGuardar()" (click)="guardar()">Guardar borrador</button>
+          <button class="btn-primary" [disabled]="ocupado() || !puedeEnviar()" (click)="enviarARevision()">Enviar a revisión</button>
+        </div>
+      }
+    </section>
+  </ng-template>
+}

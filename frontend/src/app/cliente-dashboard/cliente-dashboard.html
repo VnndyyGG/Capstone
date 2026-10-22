@@ -1,9 +1,13 @@
+@if (seleccionado() !== null) {
+  <app-tramite-detalle [id]="seleccionado()!" (cambio)="cargarListado()" (cerrar)="cerrarDetalle()" />
+} @else {
+
 <div class="page-head">
   <div>
     <h1>Mis trámites</h1>
     <p>Revisa el estado de tus documentos o inicia uno nuevo con firma electrónica avanzada.</p>
   </div>
-  <button class="btn-primary">+ Nuevo trámite</button>
+  <button class="btn-primary" (click)="showTab('nuevo')">+ Nuevo trámite</button>
 </div>
 
 <div class="scope-note">Ves únicamente tus propios trámites — filtrado a nivel de base de datos (RNF-04)</div>
@@ -11,7 +15,6 @@
 <div class="tabs">
   <button class="tab" [class.active]="activeTab() === 'listado'" (click)="showTab('listado')">Listado de trámites</button>
   <button class="tab" [class.active]="activeTab() === 'nuevo'" (click)="showTab('nuevo')">Nuevo trámite</button>
-  <button class="tab" [class.active]="activeTab() === 'editar'" (click)="showTab('editar')">Editar documento</button>
 </div>
 
 @if (activeTab() === 'listado') {
@@ -28,16 +31,20 @@
           <th>Folio</th>
           <th>Documento</th>
           <th>Fecha</th>
+          <th>Firma</th>
           <th>Estado</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        @for (t of tramites(); track t.folio) {
+        @for (t of tramites(); track t.id) {
           <tr>
             <td class="folio">{{ t.folio }}</td>
             <td>{{ t.documento }}</td>
             <td>{{ t.fecha }}</td>
+            <td>{{ t.requiereFirma ? 'Electrónica avanzada' : 'No requiere' }}</td>
             <td><span class="badge" [class]="estadoClase(t.estado)">{{ estadoLabel(t.estado) }}</span></td>
+            <td><button class="row-action" (click)="abrir(t.id)">Ver flujo</button></td>
           </tr>
         }
       </tbody>
@@ -46,9 +53,36 @@
 }
 
 @if (activeTab() === 'nuevo') {
-  <p>Aquí va el formulario para solicitar un nuevo trámite (lo armamos en el siguiente paso).</p>
+  <div class="form-section">
+    <h2>Solicitar un nuevo trámite</h2>
+    <p>Elige el servicio. Luego pagas por transferencia y redactas tu documento en línea.</p>
+
+    <div class="doc-grid">
+      @for (s of servicios(); track s.id) {
+        <div class="doc-card" [class.selected]="servicioId() === s.id" (click)="servicioId.set(s.id)">
+          <h3>{{ s.name }}</h3>
+          <div class="price">{{ clp(s.price) }}</div>
+          <div class="signers">{{ s.requires_signature ? 'Con firma electrónica avanzada' : 'Sin firma' }}</div>
+        </div>
+      } @empty {
+        <p>No hay servicios disponibles por ahora.</p>
+      }
+    </div>
+
+    <div class="form-grid">
+      <div class="field full">
+        <label for="titulo">Título del trámite</label>
+        <input id="titulo" type="text" maxlength="160" [ngModel]="titulo()" (ngModelChange)="titulo.set($event)">
+      </div>
+      <div class="field full">
+        <label for="detalles">Detalles (opcional)</label>
+        <textarea id="detalles" rows="4" maxlength="5000" [ngModel]="detalles()" (ngModelChange)="detalles.set($event)"></textarea>
+      </div>
+    </div>
+
+    @if (errorNuevo()) { <p class="login-error">{{ errorNuevo() }}</p> }
+    <button class="btn-primary" [disabled]="creando()" (click)="crear()">Crear trámite</button>
+  </div>
 }
 
-@if (activeTab() === 'editar') {
-  <p>Aquí va el editor de documentos (lo armamos más adelante).</p>
 }
