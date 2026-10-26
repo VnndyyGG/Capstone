@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Auth } from '../auth';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink],
   selector: 'app-shell',
   styleUrl: './shell.scss',
   templateUrl: './shell.html',

@@ -280,12 +280,12 @@ export class TramiteDetalle implements OnInit {
     }
   }
   bajarDocumento(docId: number, version: number) {
-    return this.bajar(`/tramites/${this.id()}/documentos/${docId}/descarga`, `${this.tramite()!.folio}-v${version}.txt`);
+    return this.bajar(`/tramites/${this.id()}/documentos/${docId}/descarga`, `${this.tramite()!.folio}-borrador-v${version}.pdf`);
   }
   bajarAdjunto(adjId: number, nombre: string) {
     return this.bajar(`/tramites/${this.id()}/adjuntos/${adjId}/descarga`, nombre);
   }
   bajarComprobante(pagoId: number) {
-    return this.bajar(`/pagos/${pagoId}/comprobante`, `comprobante-${pagoId}.txt`);
+    return this.bajar(`/pagos/${pagoId}/comprobante`, `comprobante-${pagoId}.pdf`);
   }
 }

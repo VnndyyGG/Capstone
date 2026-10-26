@@ -41,41 +41,6 @@ button {
   font-family: 'Inter', sans-serif;
 }
 
-// LOGIN
-// LOGIN
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60px 20px;
-  background: var(--surface);
-}
-
-.login-page .login-logo {
-  height: 52px;
-  margin-bottom: 8px;
-}
-
-.login-page h1 {
-  font-size: 22px;
-  margin: 6px 0 2px;
-  text-align: center;
-}
-
-.login-page p.sub {
-  color: var(--ink-soft);
-  font-size: 14px;
-  margin: 0 0 34px;
-  text-align: center;
-}
-
-.login-page footer {
-  margin-top: 40px;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
 .role-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
@@ -155,11 +120,6 @@ button {
   color: var(--amber);
 }
 
-#view-login footer {
-  margin-top: 40px;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
 
 /* ===================== APP SHELL (after login) ===================== */
 //#app-shell{display:none;}
@@ -323,6 +283,16 @@ main {
 .scope-note::before {
   content: '🔒';
   font-size: 11px;
+}
+
+.login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 
 .btn-primary {

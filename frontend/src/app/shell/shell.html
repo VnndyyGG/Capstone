@@ -2,21 +2,13 @@
 
     <div class="utility">
       <span>Horario: lunes a jueves 08:30–17:30 · viernes 08:30–14:30</span>
-      <span><a href="#">info@easyoffice.cl</a> &nbsp;·&nbsp; +56 2 2277 7781</span>
+      <span><a href="mailto:info@easyoffice.cl">info@easyoffice.cl</a> &nbsp;·&nbsp; <a href="tel:+56222777781">+56 2 2277 7781</a></span>
     </div>
   
     <header class="nav">
-      <div class="logo-wrap">
+      <a class="logo-wrap" [routerLink]="'/' + auth.currentRole()?.tipo" aria-label="Ir a mi panel">
         <img src="logo.jpg" alt="Easy Office" style="height:34px;">
-      </div>
-      <nav class="menu">
-        <a href="#">Inicio</a>
-        <a href="#">Domicilio tributario</a>
-        <a href="#">Contabilidad</a>
-        <a href="#" class="active">Firmas Electrónicas</a>
-        <a href="#">Asesoría Empresas</a>
-        <a href="#">Rebaja Tributaria</a>
-      </nav>
+      </a>
       <div class="nav-right">
         <div class="user-chip">
           <div class="avatar" [style.background]="auth.currentRole()?.avatarBg">{{ auth.currentRole()?.initials }}</div>

@@ -4,6 +4,7 @@ const v = require('./validation');
 const tpl = require('./templates');
 const { createWebpay } = require('./webpay');
 const { createCheckout } = require('./checkout');
+const { documentoPdf, comprobantePdf } = require('./pdf');
 const now = () => new Date().toISOString();
 const ROLES = ['cliente', 'admin', 'comercial', 'finanzas'];
 
@@ -346,8 +347,9 @@ function createApp(db, options = {}) {
     const row = await caseFor(req), doc = await one('SELECT * FROM documents WHERE id=? AND case_id=?', v.id(req.params.documentId), row.id);
     if (!doc) v.fail(404, 'NOT_FOUND', 'Documento no encontrado.');
     await audit(req.user.id, 'documento.descarga', 'tramite', row.id, { documentId: doc.id });
-    res.set('Content-Disposition', `attachment; filename="${row.folio}-borrador-v${doc.version}.txt"`);
-    res.type('text/plain').send('BORRADOR SIN FIRMA ELECTRONICA\n\n' + doc.content);
+    const pdf = await documentoPdf({ folio: row.folio, version: doc.version, servicio: row.service_name, contenido: doc.content, creadoEn: doc.created_at });
+    res.set('Content-Disposition', `attachment; filename="${row.folio}-borrador-v${doc.version}.pdf"`);
+    res.type('application/pdf').send(pdf);
   });
   app.post('/api/tramites/:id/adjuntos', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req, true), b = req.body || {};
@@ -413,9 +415,10 @@ function createApp(db, options = {}) {
     if (!payment) v.fail(404, 'NOT_FOUND', 'Pago no encontrado.');
     if (payment.status !== 'aprobado') v.fail(409, 'PAYMENT_NOT_APPROVED', 'El pago aún no está aprobado.');
     await audit(req.user.id, 'pago.comprobante', 'pago', payment.id);
-    res.set('Content-Disposition', `attachment; filename="comprobante-${payment.id}.txt"`);
     const order = payment.order_id ? await one('SELECT * FROM orders WHERE id=?', payment.order_id) : null;
-    res.type('text/plain').send(`COMPROBANTE INTERNO - NO ES BOLETA NI FACTURA\nTrámite: ${payment.folio}\nMonto pagado: ${payment.amount} CLP\nMétodo: ${payment.method}\nReferencia: ${payment.reference}\n${order ? `Orden: ${order.buy_order}\nTotal de la orden: ${order.total} CLP${order.coupon_code ? ` (cupón ${order.coupon_code}: -${order.discount} CLP)` : ''}\nAutorización: ${order.authorization_code}\nTarjeta: **** ${order.card_last4}\n` : ''}Verificado: ${payment.reviewed_at}\n`);
+    const pdf = await comprobantePdf({ pago: payment, orden: order });
+    res.set('Content-Disposition', `attachment; filename="comprobante-${payment.id}.pdf"`);
+    res.type('application/pdf').send(pdf);
   });
   app.get('/api/reportes/finanzas', roles('admin', 'finanzas'), async (req, res) => {
     const month = req.query.month || now().slice(0, 7);

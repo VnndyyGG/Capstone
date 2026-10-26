@@ -73,7 +73,7 @@ En las rutas de listado paginadas se permite `?limit=50&offset=0`, máximo 100. 
 | PATCH `/tramites/:id/asignacion` | Admin | `{assignedId}`; comercial activo |
 | PATCH `/tramites/:id/estado` | Según acceso y transición | `{status,reason?}` |
 | POST `/tramites/:id/documentos` | Según acceso | `{content,expectedVersion}`; 201 |
-| GET `/tramites/:id/documentos/:documentId/descarga` | Según acceso | TXT, siempre rotulado como borrador sin firma |
+| GET `/tramites/:id/documentos/:documentId/descarga` | Según acceso | PDF, siempre rotulado como borrador sin firma (pie de página y marca de agua) |
 | POST `/tramites/:id/adjuntos` | Según acceso | `{name,base64}`; PDF hasta 2 MiB; 201 |
 | GET `/tramites/:id/adjuntos/:attachmentId/descarga` | Según acceso | Descarga privada PDF |
 | GET `/carrito` | Cliente | Trámites en `pendiente_pago` con documento guardado; `en_proceso` si hay un pago confirmándose |
@@ -85,7 +85,7 @@ En las rutas de listado paginadas se permite `?limit=50&offset=0`, máximo 100. 
 | POST `/tramites/:id/firma` | Admin, comercial asignado | 503 si aprobado y requiere FEA: integración pendiente |
 | GET `/pagos` | Admin, finanzas, cliente | Cliente: solo sus pagos |
 | PATCH `/pagos/:id/revision` | Admin, finanzas | `{status:"aprobado" o "rechazado",reason}` |
-| GET `/pagos/:id/comprobante` | Admin, finanzas, cliente propietario | TXT interno de pago aprobado; no documento tributario |
+| GET `/pagos/:id/comprobante` | Admin, finanzas, cliente propietario | PDF interno de pago aprobado; no documento tributario |
 | GET `/reportes/finanzas?month=YYYY-MM` | Admin, finanzas | Ingresos, pagos aprobados/rechazados y ticket promedio |
 | GET `/indicadores` | Admin | Trámites por estado, clientes activos, sin asignar, pagos pendientes |
 | GET `/auditoria` | Admin | Bitácora paginada |
@@ -106,7 +106,7 @@ Usar la base demo y sesiones separadas por rol:
 6. Cliente o comercial solicita `en_revision` por `/estado`. Debe existir un documento.
 7. Comercial asignado o admin revisa: `observado` con motivo, o `aprobado`.
 8. Si fue observado, cliente o comercial pasa a `en_redaccion`, corrige y solicita revisión nuevamente.
-9. Si el servicio no requiere firma, comercial/admin puede pasar de `aprobado` a `completado`. El TXT sigue siendo un borrador sin firma; completado representa cierre interno, no certificación externa.
+9. Si el servicio no requiere firma, comercial/admin puede pasar de `aprobado` a `completado`. El PDF sigue siendo un borrador sin firma; completado representa cierre interno, no certificación externa.
 10. Si requiere FEA, `/firma` informa 503. El estado permanece `aprobado`. No puede completarse ni marcarse firmado manualmente.
 11. Cliente ve sus notificaciones y el comprobante interno del pago aprobado.
 

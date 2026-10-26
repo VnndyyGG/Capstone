@@ -1,90 +1,128 @@
-<div class="login-page">
-  <img class="login-logo" src="logo.jpg" alt="Easy Office">
-  <h1>Portal EasyOffice</h1>
+<div class="login">
+  <aside class="brand">
+    <div class="brand-head">
+      <span class="logo-tile"><img src="logo.jpg" alt="Easy Office"></span>
+      <span class="brand-name">Portal EasyOffice</span>
+    </div>
 
-  <div class="toggle" [class.register]="isToggled()">
-    <span class="slider"></span>
-    <button type="button" [class.active]="!isToggled()" (click)="setMode(false)">
-      Iniciar sesión
-    </button>
-    <button type="button" [class.active]="isToggled()" (click)="setMode(true)">
-      Registrarse
-    </button>
-  </div>
+    <div class="brand-copy">
+      <h2>Redacta, paga y descarga tus documentos en un solo lugar.</h2>
+      <ol class="steps">
+        <li>
+          <strong>Elige el documento</strong>
+          <span>Contratos de arriendo, poderes, acuerdos de accionistas y más.</span>
+        </li>
+        <li>
+          <strong>Completa tus datos</strong>
+          <span>El texto se arma solo; tú lo revisas y lo editas antes de pagar.</span>
+        </li>
+        <li>
+          <strong>Paga con Webpay</strong>
+          <span>Sigue el estado de tu trámite y descarga el documento en PDF.</span>
+        </li>
+      </ol>
+    </div>
+  </aside>
 
-  @if (!isToggled()) {
-  <div class="view">
-    <p class="sub">Ingresa tu correo y contraseña para acceder al portal</p>
+  <section class="panel">
+    <div class="card">
+      <h1>{{ isToggled() ? 'Crea tu cuenta' : 'Ingresa a tu cuenta' }}</h1>
 
-    <form class="login-form" (ngSubmit)="onSubmit()">
-      <div class="field">
-        <label>Correo electrónico</label>
-        <input type="email" name="email" [(ngModel)]="email" required placeholder="tucorreo@easyoffice.cl">
+      <div class="toggle" [class.register]="isToggled()" role="tablist">
+        <span class="slider"></span>
+        <button type="button" role="tab" [attr.aria-selected]="!isToggled()" [class.active]="!isToggled()"
+          (click)="setMode(false)">Iniciar sesión</button>
+        <button type="button" role="tab" [attr.aria-selected]="isToggled()" [class.active]="isToggled()"
+          (click)="setMode(true)">Registrarse</button>
       </div>
-      <div class="field">
-        <label>Contraseña</label>
-        <input type="password" name="password" [(ngModel)]="password" required minlength="12"
-          placeholder="*******">
-      </div>
 
-      @if (errorRegistro()) {
-      <p class="login-error">{{ errorRegistro() }}</p>
+      @if (!isToggled()) {
+      <div class="view">
+        <p class="sub">Ingresa tu correo y contraseña para acceder al portal.</p>
+
+        <form class="login-form" (ngSubmit)="onSubmit()">
+          <div class="field">
+            <label for="login-email">Correo electrónico</label>
+            <input id="login-email" type="email" name="email" [(ngModel)]="email" required autocomplete="email"
+              placeholder="tucorreo@easyoffice.cl">
+          </div>
+          <div class="field">
+            <label for="login-password">Contraseña</label>
+            <div class="pw">
+              <input id="login-password" [type]="mostrarClave() ? 'text' : 'password'" name="password"
+                [(ngModel)]="password" required autocomplete="current-password" placeholder="Tu contraseña">
+              <button type="button" class="pw-toggle" (click)="mostrarClave.set(!mostrarClave())"
+                [attr.aria-pressed]="mostrarClave()">{{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}</button>
+            </div>
+          </div>
+
+          @if (errorLogin()) {
+          <p class="login-error" role="alert">{{ errorLogin() }}</p>
+          }
+
+          <button type="submit" class="btn-primary" [disabled]="cargando()">
+            {{ cargando() ? 'Ingresando...' : 'Iniciar sesión' }}
+          </button>
+        </form>
+      </div>
+      } @else {
+      <div class="view">
+        <p class="sub">Completa tus datos para registrarte en el portal.</p>
+
+        <form class="login-form" (ngSubmit)="onRegister()">
+          <div class="field">
+            <label for="reg-rut">RUT</label>
+            <input id="reg-rut" type="text" name="rut" [ngModel]="rut" (ngModelChange)="onRutChange($event)" required
+              maxlength="12" autocomplete="off" placeholder="12.345.678-9">
+            @if (!rutValido()) {
+            <small class="field-error">RUT inválido, revisa el dígito verificador.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="reg-nombre">Nombre completo</label>
+            <input id="reg-nombre" type="text" name="nombre" [(ngModel)]="nombre" required autocomplete="name"
+              placeholder="Juan Pérez">
+          </div>
+          <div class="field">
+            <label for="reg-email">Correo electrónico</label>
+            <input id="reg-email" type="email" name="email" [(ngModel)]="email" required autocomplete="email"
+              placeholder="tucorreo@easyoffice.cl">
+          </div>
+          <div class="field">
+            <label for="reg-password">Contraseña</label>
+            <div class="pw">
+              <input id="reg-password" [type]="mostrarClave() ? 'text' : 'password'" name="password"
+                [(ngModel)]="password" required minlength="10" autocomplete="new-password"
+                placeholder="Mínimo 10 caracteres">
+              <button type="button" class="pw-toggle" (click)="mostrarClave.set(!mostrarClave())"
+                [attr.aria-pressed]="mostrarClave()">{{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}</button>
+            </div>
+          </div>
+
+          @if (errorRegistro()) {
+          <p class="login-error" role="alert">{{ errorRegistro() }}</p>
+          }
+
+          <button type="submit" class="btn-primary" [disabled]="cargando()">
+            {{ cargando() ? 'Creando cuenta...' : 'Crear cuenta' }}
+          </button>
+
+          <div class="divider"><span>o</span></div>
+
+          <button type="button" class="btn-clave" (click)="registrarConClaveUnica()">
+            Registrarse con ClaveÚnica
+          </button>
+
+          @if (avisoClaveUnica()) {
+          <p class="login-info" role="status">
+            Próximamente: la integración con ClaveÚnica estará disponible en un próximo sprint.
+          </p>
+          }
+        </form>
+      </div>
       }
 
-      <button type="submit" class="btn-primary" [disabled]="cargando()">
-        {{ cargando() ? 'Cargando...' : 'Iniciar sesión →' }}
-      </button>
-    </form>
-  </div>
-  } @else {
-  <div class="view">
-    <p class="sub">Completa tus datos para registrarte en el portal</p>
-
-    <form class="login-form" (ngSubmit)="onRegister()">
-      <div class="field">
-        <label>RUT</label>
-        <input type="text" name="rut" [ngModel]="rut" (ngModelChange)="onRutChange($event)" required maxlength="12"
-          autocomplete="off" placeholder="12.345.678-9">
-        @if (!rutValido()) {
-        <small class="field-error">RUT inválido, revisa el dígito verificador.</small>
-        }
-      </div>
-      <div class="field">
-        <label>Nombre</label>
-        <input type="text" name="nombre" [(ngModel)]="nombre" required placeholder="Juanito Perez">
-      </div>
-      <div class="field">
-        <label>Correo electrónico</label>
-        <input type="email" name="email" [(ngModel)]="email" required placeholder="tucorreo@easyoffice.cl">
-      </div>
-      <div class="field">
-        <label>Contraseña</label>
-        <!-- login.html -->
-        <input type="password" name="password" [(ngModel)]="password" required minlength="10" placeholder="******">
-      </div>
-
-      @if (error()) {
-      <p class="login-error">Hubo un problema al registrar la cuenta.</p>
-      }
-
-      <button type="submit" class="btn-primary" [disabled]="cargando()">
-        {{ cargando() ? 'Registrando...' : 'Registrarse →' }}
-      </button>
-
-      <div class="divider"><span>o</span></div>
-
-      <button type="button" class="btn-clave" (click)="registrarConClaveUnica()">
-        Registrarse con ClaveÚnica
-      </button>
-
-      @if (avisoClaveUnica()) {
-      <p class="login-info">
-        Próximamente: la integración con ClaveÚnica estará disponible en un próximo sprint.
-      </p>
-      }
-    </form>
-  </div>
-  }
-
-  <footer>easyoffice.cl · Firmas Electrónicas</footer>
+      <footer>easyoffice.cl · Firmas Electrónicas</footer>
+    </div>
+  </section>
 </div>

@@ -14,8 +14,9 @@ export class Login {
   nombre = '';
   email = '';
   password = '';
-  error = signal(false);
+  errorLogin = signal('');
   errorRegistro = signal('');
+  mostrarClave = signal(false);
   cargando = signal(false);
   rutValido = signal(true);
 
@@ -62,24 +63,25 @@ export class Login {
 
   setMode(registro: boolean) {
     this.isToggled.set(registro);
-    this.error.set(false);
+    this.mostrarClave.set(false);
+    this.errorLogin.set('');
     this.errorRegistro.set('');
     this.avisoClaveUnica.set(false);
   }
 
   async onSubmit() {
     if (!this.email.trim() || !this.password) {
-      this.error.set(true);
+      this.errorLogin.set('Ingresa tu correo y tu contraseña.');
       return;
     }
     this.cargando.set(true);
     const ok = await this.auth.attemptLogin(this.email.trim(), this.password);
     this.cargando.set(false);
     if (!ok) {
-      this.error.set(true);
+      this.errorLogin.set('Correo o contraseña incorrectos.');
       return;
     }
-    this.error.set(false);
+    this.errorLogin.set('');
     const tipo = this.auth.currentRole()?.tipo;
     this.router.navigate(['/' + tipo]);
   }

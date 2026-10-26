@@ -1,21 +1,114 @@
-.login-form .field {
-  text-align: left;
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+}
+
+// ---- Panel de marca ----
+.brand {
+  background: linear-gradient(165deg, #15803D 0%, #14532D 100%);
+  color: #fff;
+  padding: 56px clamp(40px, 5vw, 88px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 56px;
+}
+
+.brand-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-tile {
+  background: #F7F7F7; // mismo gris del JPG del logo
+  border-radius: 14px;
+  padding: 8px 12px;
+  line-height: 0;
+
+  img {
+    height: 46px;
+  }
+}
+
+.brand-name {
+  font: 700 19px/1 'Quicksand', sans-serif;
+}
+
+.brand-copy h2 {
+  font-size: clamp(28px, 2.7vw, 42px);
+  line-height: 1.15;
+  max-width: 15em;
+  margin: 0 0 44px;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 26px;
+  max-width: 30em;
+  counter-reset: paso;
+
+  li {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    column-gap: 16px;
+    counter-increment: paso;
+
+    &::before {
+      content: counter(paso);
+      grid-row: span 2;
+      width: 36px;
+      height: 36px;
+      border: 1.5px solid rgba(255, 255, 255, .6);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+    }
+  }
+
+  strong {
+    font-size: 16.5px;
+  }
+
+  span {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, .9);
+  }
+}
+
+// ---- Panel del formulario ----
+.panel {
+  display: grid;
+  place-items: center;
+  padding: 40px 32px;
+  background: var(--white);
+}
+
+.card {
+  width: 100%;
+  max-width: 460px;
+}
+
+h1 {
+  font-size: 34px;
+  margin: 0 0 24px;
 }
 
 .toggle {
-  width: 100%;
-  max-width: 320px;
-  margin: 16px 0 24px;
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  max-width: 320px;
-  margin: 16px auto 24px;
   padding: 4px;
-  background: #16a34a;
+  background: var(--green-2);
   border-radius: 999px;
 
-  // Pieza blanca que se desliza
   .slider {
     position: absolute;
     top: 4px;
@@ -24,8 +117,8 @@
     width: calc(50% - 4px);
     background: #fff;
     border-radius: 999px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .18);
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1);
   }
 
   &.register .slider {
@@ -35,17 +128,167 @@
   button {
     position: relative;
     z-index: 1;
-    padding: 10px 16px;
-    border: none;
+    padding: 14px 16px;
+    border: 0;
     background: transparent;
     color: #fff;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 16px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: color .3s ease;
 
     &.active {
-      color: #16a34a;
+      color: var(--green-2);
     }
+
+    &:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: -4px;
+    }
+  }
+}
+
+.sub {
+  color: var(--ink-soft);
+  font-size: 16px;
+  margin: 24px 0 22px;
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+
+  .field {
+    text-align: left;
+    gap: 7px;
+  }
+
+  label {
+    font-size: 15px;
+  }
+
+  input {
+    height: 52px;
+    padding: 0 16px;
+    font-size: 16px;
+    border: 1px solid #8E9993;
+    border-radius: 10px;
+    background: #fff;
+    width: 100%;
+
+    &::placeholder {
+      color: #6B7280;
+    }
+  }
+
+  .btn-primary,
+  .btn-clave {
+    width: 100%;
+    height: 54px;
+    font-size: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    margin-top: 6px;
+
+    &:hover:not(:disabled) {
+      filter: brightness(.94);
+    }
+
+    &:disabled {
+      opacity: .65;
+      cursor: progress;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(34, 197, 94, .45);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.pw {
+  position: relative;
+
+  input {
+    padding-right: 84px;
+  }
+}
+
+.pw-toggle {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  height: 100%;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--green-2);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.btn-clave {
+  background: #fff;
+  border: 1.5px solid var(--green-2);
+  color: var(--green-2);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--green-bg);
+  }
+}
+
+.field-error {
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+.login-info {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--blue-bg);
+  color: var(--blue);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+footer {
+  margin-top: 36px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .brand {
+    padding: 16px 20px;
+  }
+
+  .brand-copy {
+    display: none;
+  }
+
+  .logo-tile img {
+    height: 34px;
+  }
+
+  .panel {
+    padding: 28px 20px 40px;
+    place-items: start center;
+  }
+
+  h1 {
+    font-size: 28px;
   }
 }

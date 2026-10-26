@@ -1,0 +1,3 @@
+Copia cada carpeta sobre tu proyecto (respeta las rutas).
+Backend: ejecuta "npm install" (agrega pdfkit al package-lock).
+Frontend: ng serve / ng build como siempre.
