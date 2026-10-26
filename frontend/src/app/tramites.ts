@@ -38,9 +38,21 @@ export interface Plantilla {
 }
 export interface ArticuloElegido { key: string; values: Record<string, string>; }
 export interface PlantillaRender { content: string; missing: string[]; complete: boolean; }
-export interface Pago { id: number; case_id: number; amount: number; reference: string; status: 'pendiente' | 'aprobado' | 'rechazado'; reason: string | null; }
+export interface Pago { id: number; case_id: number; order_id: number | null; amount: number; method: string; reference: string; status: 'pendiente' | 'aprobado' | 'rechazado'; reason: string | null; }
 export interface Notificacion { id: number; case_id: number | null; message: string; created_at: string; }
-export interface Capabilities { payments: { transferencia: boolean; webpay: boolean }; firmaElectronicaAvanzada: boolean; }
+export interface Capabilities { payments: { webpay: boolean }; firmaElectronicaAvanzada: boolean; }
+
+// ---- Carrito, cupones y Webpay ----
+export interface CarritoItem { id: number; folio: string; title: string; service_name: string; amount: number; en_proceso: boolean; }
+export interface CotizacionItem { case_id: number; amount: number; paid_amount: number; folio: string; title: string; service_name: string; }
+export interface Cotizacion { subtotal: number; discount: number; total: number; coupon: { code: string; amount: number } | null; items: CotizacionItem[]; }
+export interface OrdenItem { case_id: number; folio: string; title: string; service_name: string; status: string; amount: number; paid_amount: number; }
+export interface Orden {
+  id: number; buy_order: string; status: 'iniciada' | 'procesando' | 'pagada' | 'rechazada' | 'anulada' | 'expirada';
+  subtotal: number; discount: number; total: number; coupon_code: string | null;
+  authorization_code: string | null; card_last4: string | null; payment_type: string | null; installments: number | null;
+  created_at: string; items: OrdenItem[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class Tramites {
@@ -87,9 +99,13 @@ export class Tramites {
   cambiarEstado(id: number, status: string, reason = '') {
     return this.http.patch<CaseRow>(`${API}/tramites/${id}/estado`, { status, reason }, this.h());
   }
-  informarPago(id: number, reference: string) {
-    return this.http.post<Pago>(`${API}/tramites/${id}/pagos`, { reference }, this.h());
+  // ---- Carrito: el servidor calcula siempre los montos; el cliente solo envía qué trámites y el código del cupón ----
+  getCarrito() { return this.http.get<{ items: CarritoItem[]; webpay: boolean }>(`${API}/carrito`, this.h()); }
+  cotizar(caseIds: number[], coupon = '') { return this.http.post<Cotizacion>(`${API}/carrito/cotizar`, { caseIds, coupon }, this.h()); }
+  pagarCarrito(caseIds: number[], coupon = '') {
+    return this.http.post<{ orderId: number; url: string; token: string; total: number }>(`${API}/carrito/pagar`, { caseIds, coupon }, this.h());
   }
+  getOrden(id: number) { return this.http.get<Orden>(`${API}/ordenes/${id}`, this.h()); }
   guardarDocumento(id: number, content: string, expectedVersion: number) {
     return this.http.post<DocumentRow>(`${API}/tramites/${id}/documentos`, { content, expectedVersion }, this.h());
   }

@@ -76,8 +76,12 @@ En las rutas de listado paginadas se permite `?limit=50&offset=0`, máximo 100. 
 | GET `/tramites/:id/documentos/:documentId/descarga` | Según acceso | TXT, siempre rotulado como borrador sin firma |
 | POST `/tramites/:id/adjuntos` | Según acceso | `{name,base64}`; PDF hasta 2 MiB; 201 |
 | GET `/tramites/:id/adjuntos/:attachmentId/descarga` | Según acceso | Descarga privada PDF |
-| POST `/tramites/:id/pagos` | Cliente propietario, admin | `{reference}`; transferencia pendiente de revisión; 201 |
-| POST `/tramites/:id/webpay` | Cliente propietario, admin | 503 si el trámite admite pago: integración pendiente |
+| GET `/carrito` | Cliente | Trámites en `pendiente_pago` con documento guardado; `en_proceso` si hay un pago confirmándose |
+| POST `/carrito/cotizar` | Cliente | `{caseIds:[..], coupon?}` → `{subtotal,discount,total,coupon,items[]}`. El monto lo calcula siempre el servidor |
+| POST `/carrito/pagar` | Cliente | Mismo cuerpo. Crea una orden y la transacción Webpay; 201 `{orderId,url,token,total}`. El navegador debe hacer POST de `token_ws` a `url` |
+| GET `/webpay/retorno` y POST | Público (lo llama Webpay) | Confirma (commit) la transacción, registra un pago `webpay` aprobado por trámite y redirige (303) a `FRONTEND_URL/cliente/carrito?orden=ID` |
+| GET `/ordenes/:id` | Cliente propietario, admin, finanzas | Estado de la orden (`iniciada`, `procesando`, `pagada`, `rechazada`, `anulada`, `expirada`) y sus trámites |
+| GET/POST `/cupones`, PATCH `/cupones/:id` | Admin | Cupones de monto fijo: `{code,amount,maxUses?,oncePerClient?,expiresAt?}`; PATCH `{active}` |
 | POST `/tramites/:id/firma` | Admin, comercial asignado | 503 si aprobado y requiere FEA: integración pendiente |
 | GET `/pagos` | Admin, finanzas, cliente | Cliente: solo sus pagos |
 | PATCH `/pagos/:id/revision` | Admin, finanzas | `{status:"aprobado" o "rechazado",reason}` |
@@ -130,3 +134,15 @@ El `Auth` actual es síncrono y usa `USUARIOS_DEMO`. Debe reemplazarse por petic
 Reemplazar las filas estáticas con `/tramites`, `/pagos` y `/reportes/finanzas`, implementar los formularios que hoy muestran “Aquí va...”, y gestionar estados de carga, errores y 409 de edición. Mostrar que Webpay/FEA no están disponibles usando `/capabilities`.
 
 No confiar en guards Angular para proteger datos: la API ya aplica permisos. No renderizar `content` como HTML sin sanitizar; esta versión guarda texto plano. Las descargas protegidas deben obtenerse con HttpClient y `responseType:'blob'`, porque un enlace HTML normal no agrega el token Bearer.
+
+
+## Pago con carrito, cupón y Webpay
+1. El cliente deja cada trámite en `pendiente_pago` (documento guardado) y abre el carrito (`GET /carrito`). Elige uno o varios trámites.
+2. `POST /carrito/cotizar` devuelve subtotal, descuento y total. El cupón es de monto fijo; se prorratea entre los trámites y nunca deja el total bajo $1.000. Un cupón por compra.
+3. `POST /carrito/pagar` crea la orden y llama a Webpay Plus (`POST /rswebpaytransaction/api/webpay/v1.2/transactions`). Un intento previo sin concluir de los mismos trámites queda `anulada`.
+4. Webpay devuelve al navegador a `/webpay/retorno`. Solo si la orden está `iniciada` y vigente (30 min) se hace commit; el servidor valida `status=AUTHORIZED`, `response_code=0`, `buy_order` y monto. Si no coinciden, reembolsa.
+5. Al aprobar se crean un `payments` (método `webpay`, aprobado) por trámite y cada trámite pasa a `en_revision`. No hay revisión manual de Finanzas.
+6. Volver a editar o cancelar un trámite descarta un intento `iniciada`; con la orden `procesando` responde 409.
+
+Variables de entorno: `FRONTEND_URL`, `WEBPAY_ENV` (`integration` o `production`), `WEBPAY_RETURN_URL` (URL pública de `/api/webpay/retorno`), y en producción `WEBPAY_COMMERCE_CODE` y `WEBPAY_API_KEY`. Sin `WEBPAY_ENV`, `capabilities.payments.webpay` es `false`.
+Pendiente: tarea de conciliación para órdenes `procesando` antiguas, reembolsos por solicitud del cliente y boleta/factura (el comprobante sigue siendo interno).

@@ -1,12 +1,13 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { RouterLink } from '@angular/router';
 import { Servicio, Tramites, Tramite } from '../tramites';
 import { ESTADOS, clp, mensajeError } from '../flujo';
 import { TramiteDetalle } from '../tramite-detalle/tramite-detalle';
 
 @Component({
-  imports: [FormsModule, TramiteDetalle],
+  imports: [FormsModule, RouterLink, TramiteDetalle],
   selector: 'app-cliente-dashboard',
   styleUrl: './cliente-dashboard.scss',
   templateUrl: './cliente-dashboard.html',
@@ -29,7 +30,10 @@ export class ClienteDashboard implements OnInit {
 
   readonly clp = clp;
 
-  constructor(private tramitesService: Tramites) {}
+  pendientesPago = computed(() => this.tramites().filter(t => t.estado === 'pendiente_pago').length);
+ 
+
+  constructor(private tramitesService: Tramites) { }
 
   ngOnInit() {
     this.cargarListado();

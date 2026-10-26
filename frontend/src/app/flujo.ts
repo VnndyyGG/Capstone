@@ -22,7 +22,7 @@ export interface Paso {
 export function pasosDe(requiereFirma: boolean): Paso[] {
   const pasos: Paso[] = [
     { clave: 'redaccion', label: 'Datos del documento', detalle: 'Completas los datos y editas el documento' },
-    { clave: 'pago', label: 'Pago', detalle: 'Transferencia verificada por Finanzas' },
+    { clave: 'pago', label: 'Pago', detalle: 'Pago con Webpay desde el carrito' },
     { clave: 'revision', label: 'Revisión', detalle: 'Un ejecutivo revisa el documento' },
     { clave: 'aprobado', label: 'Aprobado', detalle: 'Documento aprobado' },
   ];

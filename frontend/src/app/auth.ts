@@ -51,8 +51,7 @@ export class Auth {
       const result: any = await firstValueFrom(
         this.http.post(`${API_URL}/auth/register`, { name, email, rut, password })
       );
-      this.token.set(result.token);
-      this.currentRole.set(result.perfil);
+      this.guardarSesion(result.token, result.perfil);
       return { ok: true };
     } catch (e: any) {
       console.error('Registro falló:', e.status, JSON.stringify(e.error));

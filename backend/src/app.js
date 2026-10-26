@@ -2,6 +2,8 @@ const express = require('express');
 const { hashPassword, verifyPassword, digest, token, profile } = require('./security');
 const v = require('./validation');
 const tpl = require('./templates');
+const { createWebpay } = require('./webpay');
+const { createCheckout } = require('./checkout');
 const now = () => new Date().toISOString();
 const ROLES = ['cliente', 'admin', 'comercial', 'finanzas'];
 
@@ -19,6 +21,8 @@ function createApp(db, options = {}) {
     if (!allowed.includes(req.user.role)) return next(new v.ApiError(403, 'FORBIDDEN', 'Tu rol no permite esta acción.'));
     next();
   };
+  const webpay = options.webpay || createWebpay();
+  const frontendUrl = (process.env.FRONTEND_URL || origins[0]).replace(/\/$/, '');
   const issueSession = async user => {
     const accessToken = token();
     const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
@@ -39,14 +43,15 @@ function createApp(db, options = {}) {
   };
   const changeState = async (req, row, state, reason = '') => {
     await run('UPDATE cases SET status=?, updated_at=? WHERE id=?', state, now(), row.id);
-    await audit(req.user.id, 'tramite.estado', 'tramite', row.id, { from: row.status, to: state, reason });
+    await audit(req.user?.id ?? null, 'tramite.estado', 'tramite', row.id, { from: row.status, to: state, reason });
     await notify(row.client_id, row.id, `El trámite ${row.folio} cambió a ${state}.${reason ? ' Motivo: ' + reason : ''}`);
   };
+  const checkout = createCheckout({ run, insert, one, all, atomic, audit, notify, roles, changeState, webpay, now, frontendUrl });
   app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('Cache-Control', 'no-store');
     const origin = req.get('Origin');
-    if (origin) {
+    if (origin && req.path !== '/api/webpay/retorno') {
       if (!origins.includes(origin)) return next(new v.ApiError(403, 'ORIGIN_DENIED', 'Origen no permitido.'));
       res.set('Access-Control-Allow-Origin', origin);
       res.vary('Origin');
@@ -58,7 +63,7 @@ function createApp(db, options = {}) {
   });
   app.use(express.json({ limit: '3mb', strict: true }));
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-  app.get('/api/capabilities', (req, res) => res.json({ payments: { transferencia: true, webpay: false }, firmaElectronicaAvanzada: false, notifications: 'in_app', storage: 'postgresql' }));
+  app.get('/api/capabilities', (req, res) => res.json({ payments: { webpay: webpay.enabled }, firmaElectronicaAvanzada: false, notifications: 'in_app', storage: 'postgresql' }));
   const authLimit = async (req, res, next) => {
     // No confiar en X-Forwarded-For enviado por el cliente. Configurar proxy de confianza antes de desplegar.
     const key = digest(req.ip || 'unknown');
@@ -99,6 +104,7 @@ function createApp(db, options = {}) {
     const result = await atomic(async () => { await audit(user.id, 'auth.login', 'usuario', user.id); return issueSession(current); });
     res.json(result);
   });
+  checkout.mountPublic(app);
   app.use('/api', async (req, res, next) => {
     const match = /^Bearer ([a-f0-9]{64})$/.exec(req.get('Authorization') || '');
     if (!match) return next(new v.ApiError(401, 'UNAUTHENTICATED', 'Inicia sesión.'));
@@ -308,6 +314,11 @@ function createApp(db, options = {}) {
     if (state === 'cancelado' && await one("SELECT id FROM payments WHERE case_id=? AND status IN ('pendiente','aprobado')", row.id)) v.fail(409, 'PAYMENT_EXISTS', 'Resuelve el pago pendiente antes de cancelar.');
     if (['en_revision', 'pendiente_pago'].includes(state) && !await one('SELECT id FROM documents WHERE case_id=?', row.id)) v.fail(409, 'DOCUMENT_REQUIRED', 'Genera y guarda tu documento antes de continuar.');
     if (state === 'borrador' && await one("SELECT id FROM payments WHERE case_id=? AND status IN ('pendiente','aprobado')", row.id)) v.fail(409, 'PAYMENT_EXISTS', 'Ya informaste un pago; no puedes volver a editar el documento.');
+    if (['borrador', 'cancelado'].includes(state)) {
+      if (await one("SELECT o.id FROM order_items i JOIN orders o ON o.id=i.order_id WHERE i.case_id=? AND o.status='procesando'", row.id)) v.fail(409, 'PAYMENT_IN_PROGRESS', 'Hay un pago Webpay en proceso para este trámite.');
+      // Un intento sin concluir se descarta: sin confirmación Webpay no cobra.
+      await run("UPDATE orders SET status='anulada', updated_at=? WHERE status='iniciada' AND id IN (SELECT order_id FROM order_items WHERE case_id=?)", now(), row.id);
+    }
     if (state === 'observado' && !reason) v.fail(400, 'REASON_REQUIRED', 'Indica las observaciones.');
     if (state === 'completado' && row.requires_signature) v.fail(409, 'SIGNATURE_REQUIRED', 'Este trámite requiere firma electrónica verificada.');
     await atomic(async () => {
@@ -366,22 +377,7 @@ function createApp(db, options = {}) {
     if (row.status !== 'aprobado' || !row.requires_signature) v.fail(409, 'INVALID_STATE', 'Requiere un trámite aprobado con firma requerida.');
     v.fail(503, 'SIGNATURE_NOT_CONFIGURED', 'Falta integrar el proveedor de firma electrónica avanzada. No se ha firmado ni enviado el documento.');
   });
-  app.post('/api/tramites/:id/webpay', roles('cliente', 'admin'), async (req, res) => {
-    const row = await caseFor(req, true);
-    if (row.status !== 'pendiente_pago') v.fail(409, 'INVALID_STATE', 'El trámite no está pendiente de pago.');
-    v.fail(503, 'WEBPAY_NOT_CONFIGURED', 'Webpay no está integrado. No se ha realizado ningún cobro.');
-  });
-  app.post('/api/tramites/:id/pagos', roles('cliente', 'admin'), async (req, res) => {
-    const row = await caseFor(req, true), reference = v.text(req.body?.reference, 'reference', 120);
-    if (row.status !== 'pendiente_pago') v.fail(409, 'INVALID_STATE', 'El trámite no está pendiente de pago.');
-    const paymentId = await atomic(async () => {
-      if (await one("SELECT id FROM payments WHERE (case_id=? AND status IN ('pendiente','aprobado')) OR reference=?", row.id, reference)) v.fail(409, 'PAYMENT_EXISTS', 'Ya existe un pago activo o esa referencia fue utilizada.');
-      const id = await insert("INSERT INTO payments(case_id,amount,method,reference,status,submitted_by,created_at) VALUES(?,?,'transferencia',?,'pendiente',?,?)", row.id, row.amount, reference, req.user.id, now());
-      await audit(req.user.id, 'pago.informado', 'pago', id);
-      return id;
-    });
-    res.status(201).json(await one('SELECT * FROM payments WHERE id=?', paymentId));
-  });
+  checkout.mountPrivate(app); // carrito, cupones y órdenes Webpay (reemplaza el aviso de transferencia)
   app.get('/api/pagos', roles('admin', 'finanzas', 'cliente'), async (req, res) => {
     const { limit, offset } = v.pagination(req.query);
     const where = req.user.role === 'cliente' ? 'WHERE c.client_id=?' : '';
@@ -418,7 +414,8 @@ function createApp(db, options = {}) {
     if (payment.status !== 'aprobado') v.fail(409, 'PAYMENT_NOT_APPROVED', 'El pago aún no está aprobado.');
     await audit(req.user.id, 'pago.comprobante', 'pago', payment.id);
     res.set('Content-Disposition', `attachment; filename="comprobante-${payment.id}.txt"`);
-    res.type('text/plain').send(`COMPROBANTE INTERNO - NO ES BOLETA NI FACTURA\nTrámite: ${payment.folio}\nMonto: ${payment.amount} CLP\nMétodo: transferencia\nReferencia: ${payment.reference}\nVerificado: ${payment.reviewed_at}\n`);
+    const order = payment.order_id ? await one('SELECT * FROM orders WHERE id=?', payment.order_id) : null;
+    res.type('text/plain').send(`COMPROBANTE INTERNO - NO ES BOLETA NI FACTURA\nTrámite: ${payment.folio}\nMonto pagado: ${payment.amount} CLP\nMétodo: ${payment.method}\nReferencia: ${payment.reference}\n${order ? `Orden: ${order.buy_order}\nTotal de la orden: ${order.total} CLP${order.coupon_code ? ` (cupón ${order.coupon_code}: -${order.discount} CLP)` : ''}\nAutorización: ${order.authorization_code}\nTarjeta: **** ${order.card_last4}\n` : ''}Verificado: ${payment.reviewed_at}\n`);
   });
   app.get('/api/reportes/finanzas', roles('admin', 'finanzas'), async (req, res) => {
     const month = req.query.month || now().slice(0, 7);

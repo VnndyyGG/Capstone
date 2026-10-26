@@ -1,0 +1,20 @@
+.volver { margin-bottom: 18px; }
+.panel { margin: 0 0 22px; padding: 20px 22px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
+.panel h2 { margin: 0 0 8px; font-size: 18px; }
+.panel h3 { margin: 0 0 10px; font-size: 15px; }
+.acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.notice { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin: 0 0 16px; }
+.notice.ok { background: var(--green-bg); color: var(--green-status); }
+.notice.warn { background: var(--amber-bg); color: var(--amber); }
+.lista { list-style: none; padding: 0; margin: 0 0 12px; }
+.lista li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; display: flex; gap: 6px; }
+.lista .right { margin-left: auto; font-variant-numeric: tabular-nums; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.apagado { opacity: .55; }
+.field input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; text-transform: uppercase; }
+.cupon { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.cupon .field { flex: 1 1 220px; }
+.totales { display: grid; gap: 6px; min-width: 260px; }
+.totales > div { display: flex; justify-content: space-between; gap: 24px; font-size: 14px; }
+.totales .desc { color: var(--green-status); }
+.totales .total { font-family: 'Quicksand', sans-serif; font-size: 22px; font-weight: 700; padding-top: 6px; border-top: 1px solid var(--border); }

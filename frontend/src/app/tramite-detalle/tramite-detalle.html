@@ -36,41 +36,40 @@
   @switch (estado()) {
 
     @case ('pendiente_pago') {
-      <section class="panel">
-        @if (pagoDelTramite()?.status === 'pendiente') {
-          <h2>Estamos verificando tu transferencia</h2>
-          <p>Referencia informada: <strong>{{ pagoDelTramite()!.reference }}</strong>. Cuando Finanzas confirme el abono, tu documento pasa a revisión.</p>
-        } @else {
-          @if (pagoDelTramite()?.status === 'rechazado') {
-            <p class="notice warn">Tu última transferencia fue rechazada: {{ pagoDelTramite()!.reason }}. Puedes informar otra referencia.</p>
-          }
-          <h2>Tu documento está listo. Ahora paga para enviarlo a revisión</h2>
-          @if (t.documents[0]; as doc) {
-            <details class="muted">
-              <summary>Ver el documento (v{{ doc.version }})</summary>
-              <pre class="preview">{{ doc.content }}</pre>
-            </details>
-          }
-          <div class="pay-box">
-            <div>
-              <div class="amount-label">Monto a transferir</div>
-              <div class="amount">{{ clp(t.amount) }}</div>
-            </div>
-            <div class="webpay-mark">
-              @if (caps()?.payments?.webpay) { Pago con Webpay disponible }
-              @else { <strong>Webpay</strong> aún no está disponible. Paga por transferencia. }
-            </div>
+      <section class="panel listo-pago">
+        <div class="listo-head">
+          <span class="listo-icon" aria-hidden="true">✓</span>
+          <div>
+            <h2>Tu documento está listo</h2>
+            <p>Último paso: paga para enviarlo a revisión. Todavía no se te ha cobrado nada.</p>
           </div>
-          <p class="muted">Transfiere a: Cuenta Corriente / Chequera Electrónica N° 25770158951, Banco Estado, a nombre de EASY OFFICE SpA, RUT 76.767.272-1.</p>
-          <div class="field full">
-            <label for="ref">Referencia o N° de operación de tu transferencia</label>
-            <input id="ref" type="text" maxlength="120" [ngModel]="referencia()" (ngModelChange)="referencia.set($event)">
-          </div>
-          <div class="acciones">
-            <button class="btn-primary" [disabled]="ocupado()" (click)="informarPago()">Informar transferencia</button>
-            <button class="btn-ghost" [disabled]="ocupado()" (click)="volverAEditar()">← Volver a editar el documento</button>
-            <button class="btn-ghost" [disabled]="ocupado()" (click)="cancelar()">Cancelar trámite</button>
-          </div>
+        </div>
+
+        <div class="resumen">
+          <div class="resumen-fila"><span class="muted">Trámite</span><span>{{ t.service_name }}</span></div>
+          <div class="resumen-fila"><span class="muted">Folio</span><span class="folio">{{ t.folio }}</span></div>
+          <div class="resumen-fila total"><span>Valor</span><span>{{ clp(t.amount) }}</span></div>
+        </div>
+
+        <ul class="beneficios">
+          <li>Pago seguro con Webpay (Transbank): no guardamos los datos de tu tarjeta.</li>
+          <li>Puedes pagar varios trámites juntos en el carrito.</li>
+          <li>Si tienes un cupón de descuento, lo aplicas en el carrito antes de pagar.</li>
+        </ul>
+
+        @if (!caps()?.payments?.webpay) { <p class="notice warn">Webpay no está disponible por ahora. Intenta más tarde.</p> }
+
+        <div class="acciones">
+          <button class="btn-primary" [disabled]="ocupado() || !caps()?.payments?.webpay" (click)="irAlCarrito()">Ir al carrito y pagar</button>
+          <button class="btn-ghost" [disabled]="ocupado()" (click)="volverAEditar()">← Volver a editar el documento</button>
+          <button class="btn-ghost cancelar" [disabled]="ocupado()" (click)="cancelar()">Cancelar trámite</button>
+        </div>
+
+        @if (t.documents[0]; as doc) {
+          <details class="muted">
+            <summary>Ver el documento (v{{ doc.version }})</summary>
+            <pre class="preview">{{ doc.content }}</pre>
+          </details>
         }
       </section>
     }

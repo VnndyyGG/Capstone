@@ -7,7 +7,10 @@
     <h1>Mis trámites</h1>
     <p>Revisa el estado de tus documentos o inicia uno nuevo con firma electrónica avanzada.</p>
   </div>
-  <button class="btn-primary" (click)="showTab('nuevo')">+ Nuevo trámite</button>
+   <div class="head-actions">
+    <button class="btn-ghost" routerLink="/cliente/carrito">Carrito@if (pendientesPago() > 0) { ({{ pendientesPago() }}) }</button>
+    <button class="btn-primary" (click)="showTab('nuevo')">+ Nuevo trámite</button>
+  </div>
 </div>
 
 <div class="scope-note">Ves únicamente tus propios trámites — filtrado a nivel de base de datos (RNF-04)</div>
@@ -55,8 +58,8 @@
 @if (activeTab() === 'nuevo') {
   <div class="form-section">
     <h2>Solicitar un nuevo trámite</h2>
-    <p>Elige el servicio. Luego completas los datos, revisas y editas tu documento, y al final pagas por transferencia.</p>
-
+    <p>Elige el servicio. Luego completas los datos, revisas y editas tu documento, y al final pagas con Webpay desde el carrito.</p>
+ 
     <div class="doc-grid">
       @for (s of servicios(); track s.id) {
         <div class="doc-card" [class.selected]="servicioId() === s.id" (click)="servicioId.set(s.id)">

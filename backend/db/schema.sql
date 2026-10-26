@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL, rut TEXT NOT NULL DEFAULT '',
@@ -73,3 +72,34 @@ CREATE OR REPLACE TRIGGER audit_no_change BEFORE UPDATE OR DELETE ON audit
   FOR EACH ROW EXECUTE FUNCTION audit_append_only();
 CREATE OR REPLACE TRIGGER audit_no_truncate BEFORE TRUNCATE ON audit
   FOR EACH STATEMENT EXECUTE FUNCTION audit_append_only();
+
+-- ===== Carrito, cupones y Webpay (idempotente) =====
+-- La transferencia deja de ser un medio de pago nuevo. Se mantiene 'transferencia' en el CHECK solo para no invalidar pagos históricos.
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_method_check;
+ALTER TABLE payments ADD CONSTRAINT payments_method_check CHECK(method IN ('transferencia','webpay'));
+
+-- Cupones de monto fijo (CLP). max_uses NULL = sin límite. once_per_client = 1: cada cliente lo usa una sola vez.
+CREATE TABLE IF NOT EXISTS coupons (
+  id SERIAL PRIMARY KEY, code TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount > 0 AND amount <= 10000000),
+  max_uses INTEGER CHECK(max_uses IS NULL OR max_uses > 0), once_per_client INTEGER NOT NULL DEFAULT 1 CHECK(once_per_client IN (0,1)),
+  expires_at TEXT, active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)), created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS coupons_code ON coupons(code);
+
+-- Una orden = un intento de pago Webpay por un conjunto de trámites (el carrito).
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY, buy_order TEXT UNIQUE NOT NULL, client_id INTEGER NOT NULL REFERENCES users(id),
+  subtotal INTEGER NOT NULL CHECK(subtotal > 0), discount INTEGER NOT NULL DEFAULT 0 CHECK(discount >= 0),
+  total INTEGER NOT NULL CHECK(total > 0), coupon_id INTEGER REFERENCES coupons(id), coupon_code TEXT,
+  status TEXT NOT NULL CHECK(status IN ('iniciada','procesando','pagada','rechazada','anulada','expirada')),
+  token TEXT UNIQUE, authorization_code TEXT, card_last4 TEXT, payment_type TEXT, installments INTEGER,
+  response_code INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS orders_client ON orders(client_id);
+CREATE TABLE IF NOT EXISTS order_items (
+  order_id INTEGER NOT NULL REFERENCES orders(id), case_id INTEGER NOT NULL REFERENCES cases(id),
+  amount INTEGER NOT NULL CHECK(amount > 0), paid_amount INTEGER NOT NULL CHECK(paid_amount > 0),
+  PRIMARY KEY(order_id, case_id)
+);
+CREATE INDEX IF NOT EXISTS order_items_case ON order_items(case_id);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS order_id INTEGER REFERENCES orders(id);

@@ -1,0 +1,113 @@
+<button class="btn-ghost volver" routerLink="/cliente">← Volver a mis trámites</button>
+
+@if (orden(); as o) {
+  <!-- ===== Resultado del pago ===== -->
+  <div class="page-head"><div><h1>Resultado del pago</h1><p>Orden <span class="folio">{{ o.buy_order }}</span></p></div></div>
+  @if (error()) { <p class="login-error">{{ error() }}</p> }
+
+  @switch (o.status) {
+    @case ('pagada') {
+      <section class="panel">
+        <p class="notice ok">¡Pago recibido! Tus trámites pasaron a revisión.</p>
+        <ul class="lista">
+          @for (i of o.items; track i.case_id) {
+            <li><span class="folio">{{ i.folio }}</span> · {{ i.service_name }} <span class="right">{{ clp(i.paid_amount) }}</span></li>
+          }
+        </ul>
+        <div class="totales">
+          <div><span>Subtotal</span><span>{{ clp(o.subtotal) }}</span></div>
+          @if (o.discount > 0) { <div class="desc"><span>Cupón {{ o.coupon_code }}</span><span>−{{ clp(o.discount) }}</span></div> }
+          <div class="total"><span>Total pagado</span><span>{{ clp(o.total) }}</span></div>
+        </div>
+        <p class="muted">Autorización {{ o.authorization_code }}@if (o.card_last4) { · Tarjeta terminada en {{ o.card_last4 }} }@if (o.installments) { · {{ o.installments }} cuotas }</p>
+        <div class="acciones"><button class="btn-primary" routerLink="/cliente">Ver mis trámites</button></div>
+      </section>
+    }
+    @case ('procesando') {
+      <section class="panel"><h2>Estamos confirmando tu pago…</h2><p>Esto toma unos segundos. No cierres esta página.</p></section>
+    }
+    @case ('rechazada') {
+      <section class="panel">
+        <p class="notice warn">Tu pago no fue aprobado por el banco o la tarjeta. No se realizó ningún cobro.</p>
+        <div class="acciones"><button class="btn-primary" (click)="volverAlCarrito()">Volver al carrito</button></div>
+      </section>
+    }
+    @default {
+      <section class="panel">
+        <p class="notice warn">El pago no se completó (cancelado, tiempo agotado o reemplazado por otro intento). No se realizó ningún cobro.</p>
+        <div class="acciones"><button class="btn-primary" (click)="volverAlCarrito()">Volver al carrito</button></div>
+      </section>
+    }
+  }
+} @else {
+  <!-- ===== Carrito ===== -->
+  <div class="page-head">
+    <div>
+      <h1>Carrito</h1>
+      <p>Trámites con documento listo y pendientes de pago. Elige cuáles pagar ahora; se cobran juntos con Webpay.</p>
+    </div>
+  </div>
+
+  @if (volvioConError()) { <p class="notice warn">No pudimos identificar tu pago. Si te cobraron, revisa tus trámites o contáctanos.</p> }
+  @if (error()) { <p class="login-error">{{ error() }}</p> }
+  @if (!webpayActivo()) { <p class="notice warn">Webpay no está disponible por ahora. Intenta más tarde.</p> }
+
+  @if (cargando()) {
+    <p>Cargando carrito...</p>
+  } @else if (items().length === 0) {
+    <section class="panel">
+      <h2>Tu carrito está vacío</h2>
+      <p>Cuando termines de completar un documento y presiones «Continuar al pago», aparecerá aquí.</p>
+      <div class="acciones"><button class="btn-primary" routerLink="/cliente">Ir a mis trámites</button></div>
+    </section>
+  } @else {
+    <section class="panel">
+      <table>
+        <thead><tr><th></th><th>Folio</th><th>Documento</th><th class="num">Valor</th></tr></thead>
+        <tbody>
+          @for (i of items(); track i.id) {
+            <tr [class.apagado]="i.en_proceso">
+              <td><input type="checkbox" [checked]="seleccion().has(i.id)" [disabled]="i.en_proceso || ocupado()" (change)="alternar(i.id)" [attr.aria-label]="'Pagar ' + i.folio"></td>
+              <td class="folio">{{ i.folio }}</td>
+              <td>{{ i.service_name }}@if (i.en_proceso) { <span class="muted"> · pago en proceso</span> }</td>
+              <td class="num">{{ clp(i.amount) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h3>Cupón de descuento</h3>
+      @if (cotizacion()?.coupon; as c) {
+        <p class="notice ok">Cupón <strong>{{ c.code }}</strong> aplicado.
+          <button class="row-action" [disabled]="ocupado()" (click)="quitarCupon()">Quitar</button></p>
+      } @else {
+        <div class="cupon">
+          <div class="field">
+            <label for="cupon">¿Tienes un cupón?</label>
+            <input id="cupon" type="text" maxlength="40" autocomplete="off" [ngModel]="cupon()" (ngModelChange)="cupon.set($event)" (keydown.enter)="aplicarCupon()">
+          </div>
+          <button class="btn-ghost" [disabled]="ocupado() || !cupon().trim() || seleccion().size === 0" (click)="aplicarCupon()">Aplicar</button>
+        </div>
+        @if (errorCupon()) { <p class="login-error">{{ errorCupon() }}</p> }
+      }
+    </section>
+
+    @if (cotizacion(); as q) {
+      <div class="pay-box">
+        <div class="totales">
+          <div><span>Subtotal ({{ q.items.length }} {{ q.items.length === 1 ? 'trámite' : 'trámites' }})</span><span>{{ clp(q.subtotal) }}</span></div>
+          @if (q.discount > 0) { <div class="desc"><span>Descuento</span><span>−{{ clp(q.discount) }}</span></div> }
+          <div class="total"><span>Total a pagar</span><span>{{ clp(q.total) }}</span></div>
+        </div>
+        <button class="btn-primary" [disabled]="ocupado() || !webpayActivo()" (click)="pagar()">
+          {{ ocupado() ? 'Redirigiendo a Webpay…' : 'Pagar con Webpay' }}
+        </button>
+      </div>
+      <p class="muted">Serás redirigido a Webpay (Transbank) para ingresar tu tarjeta. Easy Office no recibe ni guarda los datos de tu tarjeta.</p>
+    } @else {
+      <p class="muted">Selecciona al menos un trámite para ver el total.</p>
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { Login } from './login/login';
 import { Shell } from './shell/shell';
+import { Carrito } from './carrito/carrito';
 import { ClienteDashboard } from './cliente-dashboard/cliente-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { ComercialDashboard } from './comercial-dashboard/comercial-dashboard';
@@ -15,6 +16,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'cliente', component: ClienteDashboard, canActivate: [roleGuard('cliente')] },
+      { path: 'cliente/carrito', component: Carrito, canActivate: [roleGuard('cliente')] },
       { path: 'admin', component: AdminDashboard, canActivate: [roleGuard('admin')] },
       { path: 'comercial', component: ComercialDashboard, canActivate: [roleGuard('comercial')] },
       { path: 'finanzas', component: FinanzasDashboard, canActivate: [roleGuard('finanzas')] },

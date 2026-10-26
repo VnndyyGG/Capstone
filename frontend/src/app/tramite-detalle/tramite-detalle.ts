@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   ArticuloElegido, CampoPlantilla, CaseDetail, Capabilities, Notificacion, Pago, Plantilla, Tramites,
@@ -30,7 +31,6 @@ export class TramiteDetalle implements OnInit {
   aviso = signal('');
 
   contenido = signal('');
-  referencia = signal('');
   plantillaId = signal<number | null>(null);
   valores = signal<Record<string, string>>({});
   articulos = signal<ArticuloElegido[]>([]);   // artículos elegidos (plantillas con {{clausulas}})
@@ -115,7 +115,7 @@ export class TramiteDetalle implements OnInit {
     this.notifs().find(n => n.case_id === this.id() && n.message.includes('observado'))?.message ?? ''
   );
 
-  constructor(private api: Tramites) { }
+  constructor(private api: Tramites, private router: Router) { }
 
   ngOnInit() { this.cargar(); }
 
@@ -162,15 +162,7 @@ export class TramiteDetalle implements OnInit {
   }
 
   // ---- Paso 1: pago ----
-  informarPago() {
-    const ref = this.referencia().trim();
-    if (!ref) { this.error.set('Ingresa la referencia de tu transferencia.'); return; }
-    return this.ejecutar(async () => {
-      await firstValueFrom(this.api.informarPago(this.id(), ref));
-      this.referencia.set('');
-    }, 'Aviso de transferencia enviado. Finanzas lo verificará.');
-  }
-
+  irAlCarrito() { this.router.navigate(['/cliente/carrito']); }
   cancelar() {
     if (!confirm('¿Cancelar este trámite? Esta acción no se puede deshacer.')) return;
     return this.ejecutar(() => firstValueFrom(this.api.cambiarEstado(this.id(), 'cancelado')));
