@@ -40,6 +40,7 @@ export interface Plantilla {
 }
 export interface ArticuloElegido { key: string; values: Record<string, string>; }
 export interface PlantillaRender { content: string; missing: string[]; complete: boolean; }
+export interface DireccionSugerida { direccion: string; lugares: string[]; etiqueta: string; }
 export interface ClienteResultado { id: number; name: string; email: string; rut: string; }
 export interface CaseResumen { id: number; folio: string; service_name: string; title: string; status: string; assigned_id: number | null; created_at: string; }
 export interface Pago { id: number; case_id: number; order_id: number | null; amount: number; method: string; reference: string; status: 'pendiente' | 'aprobado' | 'rechazado'; reason: string | null; }
@@ -124,6 +125,9 @@ export class Tramites {
   }
   buscarClientes(q: string) {
     return this.http.get<{ items: ClienteResultado[] }>(`${API}/clientes`, { ...this.h(), params: { q } });
+  }
+  buscarDirecciones(q: string) {
+    return this.http.get<{ items: DireccionSugerida[] }>(`${API}/direcciones`, { ...this.h(), params: { q } });
   }
   getTramitesDeCliente(id: number) {
     return this.http.get<{ items: CaseResumen[] }>(`${API}/clientes/${id}/tramites`, this.h());

@@ -180,6 +180,47 @@
                   <label [attr.for]="'c-' + c.key">{{ c.label }}@if (!c.required) { <span class="muted"> (opcional)</span> }</label>
                   @if (esCampoFecha(c)) {
                     <input [id]="'c-' + c.key" type="date" [ngModel]="fechaIso(valores()[c.key] ?? '')" (ngModelChange)="setFecha(c.key, $event)">
+                  } @else if (esDireccion(c)) {
+                    <div class="autocompletar">
+                      <input [id]="'c-' + c.key" autocomplete="off" [placeholder]="c.placeholder ?? 'Escribe calle y número…'"
+                             [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="escribirDireccion(c.key, $event)"
+                             (blur)="sugerencias.set(null)" (keydown.escape)="sugerencias.set(null)">
+                      @if (sugerencias()?.key === c.key && sugerencias()!.items.length) {
+                        <ul class="sugerencias" role="listbox">
+                          @for (s of sugerencias()!.items; track s.etiqueta) {
+                            <!-- mousedown (no click): se ejecuta antes del blur que cierra la lista -->
+                            <li role="option" (mousedown)="$event.preventDefault(); elegirDireccion(c.key, s)">{{ s.direccion }}<span class="muted">, {{ comunaDe(s) ?? s.lugares[0] }}</span></li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                    <span class="muted ayuda">Elige una sugerencia y agrega depto. u oficina si corresponde.</span>
+                  } @else if (vehiculo(c) === 'marca') {
+                    <select [id]="'c-' + c.key" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setMarca($event)">
+                      <option value="">Selecciona la marca…</option>
+                      @if (marcaFueraDeLista()) { <option [value]="valores()[c.key]">{{ valores()[c.key] }}</option> }
+                      @for (m of marcas; track m.nombre) { <option [value]="mayus(m.nombre)">{{ m.nombre }}</option> }
+                    </select>
+                  } @else if (vehiculo(c) === 'modelo') {
+                    <input [id]="'c-' + c.key" list="modelos-sugeridos" autocomplete="off"
+                           [placeholder]="modelosDeMarca().length ? 'Elige o escribe el modelo' : 'Escribe el modelo'"
+                           [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                    <datalist id="modelos-sugeridos">
+                      @for (m of modelosDeMarca(); track m) { <option [value]="mayus(m)">{{ m }}</option> }
+                    </datalist>
+                  } @else if (vehiculo(c) === 'anio') {
+                    <select [id]="'c-' + c.key" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                      <option value="">Selecciona el año…</option>
+                      @for (a of anios; track a) { <option [value]="a">{{ a }}</option> }
+                    </select>
+                  } @else if (vehiculo(c) === 'patente') {
+                    <input #campoPatente [id]="'c-' + c.key" placeholder="ABCD-12" maxlength="7" autocomplete="off"
+                           [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setPatente(c.key, $event, campoPatente)">
+                  } @else if (c.key === 'monto') {
+                    <div class="con-signo">
+                      <span>$</span>
+                      <input #campoMonto [id]="'c-' + c.key" inputmode="numeric" placeholder="450.000" autocomplete="off" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setMonto(c.key, $event, campoMonto)">
+                    </div>
                   } @else if (c.type === 'rut') {
                     <input #campoRut [id]="'c-' + c.key" placeholder="12.345.678-5" maxlength="12" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setRut(c.key, $event, campoRut)">
                   } @else if (ubicacion(c) === 'region') {

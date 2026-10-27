@@ -4,12 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
-  ArticuloElegido, CampoPlantilla, CaseDetail, Capabilities, Notificacion, Pago, Plantilla, Tramites,
+  ArticuloElegido, CampoPlantilla, CaseDetail, Capabilities, DireccionSugerida, Notificacion, Pago, Plantilla, Tramites,
 } from '../tramites';
 import { ESTADOS, clp, indiceActual, mensajeError, pasosDe } from '../flujo';
 import { Auth, PREFIJO_AVANCE } from '../auth';
-import { REGIONES, esComuna, esComunaValida, esRegion, esRegionValida, mayus, regionDe, regionDeComuna } from '../chile';
+import { REGIONES, comunaOficial, esComuna, esComunaValida, esRegion, esRegionValida, mayus, regionDe, regionDeComuna } from '../chile';
 import { esFecha, fechaIso, fechaTexto, mesesEntre, sumarMeses } from '../fechas';
+import { MARCAS, aniosVehiculo, formatoPatente } from '../vehiculos';
+import { montoEnPalabras } from '../montos';
 
 /** Lo que el cliente lleva escrito y aún no está en el servidor. Se guarda solo en este navegador. */
 interface Avance {
@@ -294,6 +296,82 @@ export class TramiteDetalle implements OnInit {
   esCampoFecha(c: CampoPlantilla) { return c.type === 'text' && esFecha(c.key); }
   /** El calendario entrega "2026-01-01"; en el contrato se guarda "01 DE ENERO DE 2026". */
   setFecha(k: string, iso: string) { this.setValor(k, fechaTexto(iso)); }
+
+  // ---- Dirección: sugerencias de direcciones reales mientras se escribe ----
+  sugerencias = signal<{ key: string; items: DireccionSugerida[] } | null>(null);
+  private esperaDireccion?: ReturnType<typeof setTimeout>;
+  /** Los campos de texto `*_direccion` / `*_domicilio`. */
+  esDireccion(c: CampoPlantilla) { return c.type === 'text' && /(^|_)(direccion|domicilio)$/.test(c.key); }
+  /** Espera a que el cliente deje de escribir (350 ms) para no consultar en cada tecla. */
+  escribirDireccion(k: string, v: string) {
+    this.setValor(k, v);
+    clearTimeout(this.esperaDireccion);
+    if (v.trim().length < 4) { this.sugerencias.set(null); return; }
+    this.esperaDireccion = setTimeout(async () => {
+      try {
+        const { items } = await firstValueFrom(this.api.buscarDirecciones(v.trim()));
+        if (this.valores()[k] === v) this.sugerencias.set({ key: k, items });   // descarta respuestas de algo ya borrado
+      } catch {
+        this.sugerencias.set(null);   // si el buscador falla, se sigue escribiendo a mano
+      }
+    }, 350);
+  }
+  /** El buscador trae barrio, ciudad y provincia mezclados: la comuna es el primero que está en la lista oficial. */
+  comunaDe(s: DireccionSugerida) {
+    for (const lugar of s.lugares) {
+      const c = comunaOficial(lugar);
+      if (c) return c;
+    }
+    return undefined;
+  }
+  /** Al elegir una sugerencia se completa la dirección y, si el formulario las tiene, la comuna y la región. */
+  elegirDireccion(k: string, s: DireccionSugerida) {
+    this.sugerencias.set(null);
+    this.setValor(k, mayus(s.direccion));
+    const comunaKey = k.replace(/(direccion|domicilio)$/, 'comuna');
+    const comuna = this.comunaDe(s);
+    if (comuna && this.campos().some(c => c.key === comunaKey)) this.setValor(comunaKey, mayus(comuna));   // setValor completa la región
+  }
+
+  // ---- Vehículo: marca en lista, modelos sugeridos, año en lista y patente con formato ----
+  readonly marcas = MARCAS;
+  readonly anios = aniosVehiculo();
+  vehiculo(c: CampoPlantilla): 'marca' | 'modelo' | 'anio' | 'patente' | null {
+    return c.type === 'text' && ['marca', 'modelo', 'anio', 'patente'].includes(c.key) ? c.key as 'marca' : null;
+  }
+  /** La marca guardada no está en la lista (se escribió a mano): se muestra igual como opción. */
+  marcaFueraDeLista() {
+    const v = this.valores()['marca'];
+    return !!v && !MARCAS.some(m => mayus(m.nombre) === v);
+  }
+  modelosDeMarca() {
+    return MARCAS.find(m => mayus(m.nombre) === this.valores()['marca'])?.modelos ?? [];
+  }
+  /** Al cambiar de marca se borra el modelo si es de otra marca (para no dejar "Hyundai Corolla"). Un modelo escrito a mano se conserva. */
+  setMarca(v: string) {
+    this.setValor('marca', v);
+    const modelo = mayus(this.valores()['modelo'] ?? '');
+    const deOtraMarca = MARCAS.some(m => mayus(m.nombre) !== v && m.modelos.some(x => mayus(x) === modelo));
+    if (modelo && deOtraMarca && !this.modelosDeMarca().some(x => mayus(x) === modelo)) this.setValor('modelo', '');
+  }
+  setPatente(k: string, v: string, input: HTMLInputElement) {
+    const patente = formatoPatente(v);
+    input.value = patente;
+    this.setValor(k, patente);
+  }
+
+  /**
+   * Solo números, con punto de miles: 450000 → 450.000 (el "$" ya está en el contrato y en la pantalla).
+   * Si la plantilla tiene `monto_palabras`, lo completa solo; el cliente igual puede corregirlo.
+   */
+  setMonto(k: string, v: string, input: HTMLInputElement) {
+    const numeros = v.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 12);
+    const monto = numeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    input.value = monto;   // si se escribió una letra, se borra de la pantalla
+    this.setValor(k, monto);
+    const palabras = `${k}_palabras`;
+    if (this.campos().some(c => c.key === palabras)) this.setValor(palabras, numeros ? montoEnPalabras(Number(numeros)) : '');
+  }
 
   /** Pone puntos y guion mientras el cliente escribe: 123456785 → 12.345.678-5 */
   setRut(k: string, v: string, input: HTMLInputElement) {

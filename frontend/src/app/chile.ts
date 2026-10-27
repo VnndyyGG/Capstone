@@ -36,3 +36,14 @@ const REGIONES_VALIDAS = new Set(REGIONES.map(r => mayus(r.nombre)));
 const COMUNAS_VALIDAS = new Set(REGIONES.flatMap(r => r.comunas.map(mayus)));
 export const esRegionValida = (v: string) => REGIONES_VALIDAS.has(mayus(v));
 export const esComunaValida = (v: string) => COMUNAS_VALIDAS.has(mayus(v));
+
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+/** Nombre oficial de la comuna aunque venga sin tildes ("Valparaiso" → "Valparaíso"). */
+export function comunaOficial(nombre: string): string | undefined {
+  const n = sinTildes(nombre);
+  for (const r of REGIONES) {
+    const c = r.comunas.find(x => sinTildes(x) === n);
+    if (c) return c;
+  }
+  return undefined;
+}

@@ -181,6 +181,33 @@ function createApp(db, options = {}) {
     });
     res.json(profile(await one('SELECT * FROM users WHERE id=?', userId)));
   });
+  // Autocompletado de direcciones con Photon (OpenStreetMap). Pasa por el backend para poder cambiar de proveedor sin tocar el frontend.
+  const photonUrl = (process.env.PHOTON_URL || 'https://photon.komoot.io').replace(/\/$/, '');
+  app.get('/api/direcciones', async (req, res) => {
+    const q = v.text(req.query.q || '', 'q', 120, 0);
+    if (q.length < 4) return res.json({ items: [] });
+    // bbox: rectángulo que cubre Chile continental, para no sugerir direcciones de otros países.
+    const params = new URLSearchParams({ q, limit: '8', lang: 'default', bbox: '-76,-56.5,-66,-17.4' });
+    let data;
+    try {
+      const r = await fetch(`${photonUrl}/api/?${params}`, { headers: { 'User-Agent': 'EasyOffice/1.0' }, signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error(`Photon ${r.status}`);
+      data = await r.json();
+    } catch {
+      v.fail(502, 'DIRECCIONES_NO_DISPONIBLE', 'El buscador de direcciones no responde. Escribe la dirección a mano.');
+    }
+    const vistas = new Set();
+    const items = (data.features || []).map(f => f.properties)
+      .filter(p => p.countrycode === 'CL' && (p.street || p.name))
+      .map(p => {
+        const direccion = [p.street || p.name, p.housenumber].filter(Boolean).join(' ');
+        // La comuna puede venir como district (Gran Santiago) o city (regiones); el frontend elige la que calce con su lista.
+        return { direccion, lugares: [p.district, p.city, p.locality, p.county].filter(Boolean),
+          etiqueta: [direccion, p.district || p.city, p.state].filter(Boolean).join(', ') };
+      })
+      .filter(x => !vistas.has(x.etiqueta) && vistas.add(x.etiqueta));
+    res.json({ items });
+  });
   app.get('/api/clientes', roles('admin', 'comercial'), async (req, res) => {
     const { limit, offset } = v.pagination(req.query);
     const q = v.text(req.query.q || '', 'q', 120, 0);
