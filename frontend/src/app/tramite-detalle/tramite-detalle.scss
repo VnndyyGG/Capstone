@@ -33,5 +33,8 @@
 .notice { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin: 0 0 16px; }
 .notice.ok { background: var(--green-bg); color: var(--green-status); }
 .notice.warn { background: var(--amber-bg); color: var(--amber); }
+.notice.recuperado { background: var(--blue-bg); color: var(--blue); display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.notice.recuperado .row-action { background: none; border: none; padding: 0; cursor: pointer; }
 .articulo { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; display: grid; gap: 10px; }
 .articulo > strong { display: inline-block; }
+.aviso-campo { margin: 6px 0 0; font-size: 12.5px; }

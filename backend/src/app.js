@@ -42,10 +42,21 @@ function createApp(db, options = {}) {
     if (write && ['cancelado', 'firmado', 'entregado', 'completado'].includes(row.status)) v.fail(409, 'CASE_LOCKED', 'El trámite ya no admite modificaciones.');
     return row;
   };
+  // Un trámite que entra a revisión sin ejecutivo se asigna al comercial activo con menos trámites abiertos.
+  const autoAssign = async row => {
+    if (row.assigned_id) return;
+    const exec = await one(`SELECT u.id FROM users u WHERE u.role='comercial' AND u.active=1
+      ORDER BY (SELECT COUNT(*) FROM cases c WHERE c.assigned_id=u.id AND c.status NOT IN ('completado','entregado','cancelado')), u.id LIMIT 1`);
+    if (!exec) return; // sin comerciales activos queda en "sin asignar" para el admin
+    await run('UPDATE cases SET assigned_id=? WHERE id=? AND assigned_id IS NULL', exec.id, row.id);
+    await audit(null, 'tramite.asignacion', 'tramite', row.id, { assignedId: exec.id, auto: true });
+    await notify(exec.id, row.id, `Se te asignó el trámite ${row.folio} para revisión.`);
+  };
   const changeState = async (req, row, state, reason = '') => {
     await run('UPDATE cases SET status=?, updated_at=? WHERE id=?', state, now(), row.id);
     await audit(req.user?.id ?? null, 'tramite.estado', 'tramite', row.id, { from: row.status, to: state, reason });
     await notify(row.client_id, row.id, `El trámite ${row.folio} cambió a ${state}.${reason ? ' Motivo: ' + reason : ''}`);
+    if (state === 'en_revision') await autoAssign(row);
   };
   const checkout = createCheckout({ run, insert, one, all, atomic, audit, notify, roles, changeState, webpay, now, frontendUrl });
   app.use((req, res, next) => {
@@ -174,8 +185,13 @@ function createApp(db, options = {}) {
     const { limit, offset } = v.pagination(req.query);
     const q = v.text(req.query.q || '', 'q', 120, 0);
     if (req.user.role === 'comercial' && q.length < 3) v.fail(400, 'VALIDATION_ERROR', 'Busca con al menos 3 caracteres.');
-    const pattern = '%' + q.replace(/[\\%_]/g, '\\$&') + '%';
-    const items = await all("SELECT id,name,email,rut FROM users WHERE role='cliente' AND (name ILIKE ? ESCAPE '\\' OR rut ILIKE ? ESCAPE '\\') ORDER BY id LIMIT ? OFFSET ?", pattern, pattern, limit, offset);
+    const like = s => '%' + s.replace(/[\\%_]/g, '\\$&') + '%';
+    const pattern = like(q);
+    // El RUT se guarda como 12345678-9: se compara sin puntos, espacios ni guion para aceptar "12.345.678-9" o "123456789".
+    const rutPattern = like(q.replace(/[.\s-]/g, ''));
+    const items = await all(`SELECT id,name,email,rut FROM users WHERE role='cliente'
+      AND (name ILIKE ? ESCAPE '\\' OR email ILIKE ? ESCAPE '\\' OR REPLACE(rut,'-','') ILIKE ? ESCAPE '\\')
+      ORDER BY id LIMIT ? OFFSET ?`, pattern, pattern, rutPattern, limit, offset);
     await audit(req.user.id, 'cliente.busqueda', 'usuario', null, { query: q, count: items.length });
     res.json({ items });
   });
@@ -309,7 +325,7 @@ function createApp(db, options = {}) {
   app.patch('/api/tramites/:id/estado', roles('admin', 'comercial', 'cliente'), async (req, res) => {
     const row = await caseFor(req, true), state = v.text(req.body?.status, 'status', 40);
     const reason = v.text(req.body?.reason || '', 'reason', 1000, 0);
-    const transitions = { borrador: ['pendiente_pago', 'cancelado'], pendiente_pago: ['borrador', 'cancelado'], en_redaccion: ['en_revision'], en_revision: ['observado', 'aprobado'], observado: ['en_redaccion'], aprobado: ['completado'] };
+    const transitions = { borrador: ['pendiente_pago', 'cancelado'], pendiente_pago: ['borrador', 'cancelado'], en_redaccion: ['en_revision'], en_revision: ['observado', 'aprobado'], observado: ['en_redaccion', 'en_revision'], aprobado: ['completado'] };
     if (!transitions[row.status]?.includes(state)) v.fail(409, 'INVALID_TRANSITION', 'Cambio de estado no permitido.');
     if (req.user.role === 'cliente' && !['en_revision', 'en_redaccion', 'pendiente_pago', 'borrador', 'cancelado'].includes(state)) v.fail(403, 'FORBIDDEN', 'No puedes aprobar tu propio trámite.');
     if (state === 'cancelado' && await one("SELECT id FROM payments WHERE case_id=? AND status IN ('pendiente','aprobado')", row.id)) v.fail(409, 'PAYMENT_EXISTS', 'Resuelve el pago pendiente antes de cancelar.');

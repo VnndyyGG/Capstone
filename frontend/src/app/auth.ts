@@ -16,6 +16,8 @@ export interface Rol {
 }
 
 const API_URL = 'http://localhost:3000/api';
+/** Prefijo del avance de formularios guardado en localStorage (ver TramiteDetalle). */
+export const PREFIJO_AVANCE = 'eo-avance-';
 
 @Injectable({ providedIn: 'root' })
 export class Auth {
@@ -78,5 +80,9 @@ export class Auth {
     this.currentRole.set(null);
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('perfil');
+    // El avance de formularios contiene RUT y direcciones: no se deja en el navegador al cerrar sesión.
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith(PREFIJO_AVANCE)).forEach(k => localStorage.removeItem(k));
+    } catch { /* sin storage disponible */ }
   }
 }

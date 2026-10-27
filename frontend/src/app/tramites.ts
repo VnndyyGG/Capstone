@@ -3,6 +3,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { Auth } from './auth';
 
+
+
 const API = 'http://localhost:3000/api';
 
 // ---- Modelos (snake_case = como los devuelve el backend) ----
@@ -38,6 +40,8 @@ export interface Plantilla {
 }
 export interface ArticuloElegido { key: string; values: Record<string, string>; }
 export interface PlantillaRender { content: string; missing: string[]; complete: boolean; }
+export interface ClienteResultado { id: number; name: string; email: string; rut: string; }
+export interface CaseResumen { id: number; folio: string; service_name: string; title: string; status: string; assigned_id: number | null; created_at: string; }
 export interface Pago { id: number; case_id: number; order_id: number | null; amount: number; method: string; reference: string; status: 'pendiente' | 'aprobado' | 'rechazado'; reason: string | null; }
 export interface Notificacion { id: number; case_id: number | null; message: string; created_at: string; }
 export interface Capabilities { payments: { webpay: boolean }; firmaElectronicaAvanzada: boolean; }
@@ -113,6 +117,17 @@ export class Tramites {
     return this.http.post<{ id: number; name: string }>(`${API}/tramites/${id}/adjuntos`, { name, base64 }, this.h());
   }
 
+
+  // ---- Ejecutivo comercial: el backend ya filtra a sus trámites asignados ----
+  getTramitesAsignados() {
+    return this.http.get<{ items: (CaseRow & { client_name: string })[]; total: number }>(`${API}/tramites?limit=100`, this.h());
+  }
+  buscarClientes(q: string) {
+    return this.http.get<{ items: ClienteResultado[] }>(`${API}/clientes`, { ...this.h(), params: { q } });
+  }
+  getTramitesDeCliente(id: number) {
+    return this.http.get<{ items: CaseResumen[] }>(`${API}/clientes/${id}/tramites`, this.h());
+  }
 
   descargar(ruta: string) {
     return this.http.get(`${API}${ruta}`, { ...this.h(), responseType: 'blob' });

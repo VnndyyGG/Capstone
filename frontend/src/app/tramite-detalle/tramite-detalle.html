@@ -1,4 +1,4 @@
-<button class="btn-ghost volver" (click)="cerrar.emit()">← Volver a mis trámites</button>
+<button class="btn-ghost volver" (click)="volver()">← Volver a mis trámites</button>
 
 @if (cargando() && !tramite()) {
   <p>Cargando trámite...</p>
@@ -31,6 +31,12 @@
 
   @if (error()) { <p class="login-error">{{ error() }}</p> }
   @if (aviso()) { <p class="notice ok">{{ aviso() }}</p> }
+  @if (recuperado()) {
+    <p class="notice recuperado">
+      Recuperamos lo que habías escrito en este navegador. Aún no está guardado en el servidor.
+      <button class="row-action" (click)="descartarAvance()">Descartar y empezar de nuevo</button>
+    </p>
+  }
 
   <!-- ===== Panel de acción según el estado ===== -->
   @switch (estado()) {
@@ -154,7 +160,7 @@
         @if (!t.template_id) {
         <div class="field full">
           <label for="plantilla">Documento</label>
-          <select id="plantilla" [ngModel]="plantillaId()?.toString() ?? ''" (ngModelChange)="elegirPlantilla($event)">
+          <select id="plantilla" [ngModel]="plantillaId()?.toString() ?? ''" (ngModelChange)="cambiarPlantilla($event)">
             <option value="">Selecciona un documento…</option>
             @for (g of grupos(); track g.label) {
               <optgroup [label]="g.label">
@@ -172,6 +178,27 @@
               @for (c of s.campos; track c.key) {
                 <div class="field" [class.full]="c.type === 'textarea'">
                   <label [attr.for]="'c-' + c.key">{{ c.label }}@if (!c.required) { <span class="muted"> (opcional)</span> }</label>
+                  @if (esCampoFecha(c)) {
+                    <input [id]="'c-' + c.key" type="date" [ngModel]="fechaIso(valores()[c.key] ?? '')" (ngModelChange)="setFecha(c.key, $event)">
+                  } @else if (c.type === 'rut') {
+                    <input #campoRut [id]="'c-' + c.key" placeholder="12.345.678-5" maxlength="12" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setRut(c.key, $event, campoRut)">
+                  } @else if (ubicacion(c) === 'region') {
+                    <select [id]="'c-' + c.key" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                      <option value="">Selecciona la región…</option>
+                      @if (fueraDeLista(c)) { <option [value]="valores()[c.key]">{{ valores()[c.key] }}</option> }
+                      @for (r of regiones; track r.nombre) { <option [value]="mayus(r.nombre)">{{ r.nombre }}</option> }
+                    </select>
+                  } @else if (ubicacion(c) === 'comuna') {
+                    <select [id]="'c-' + c.key" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                      <option value="">Selecciona la comuna…</option>
+                      @if (fueraDeLista(c)) { <option [value]="valores()[c.key]">{{ valores()[c.key] }}</option> }
+                      @for (r of comunasPara(c.key); track r.nombre) {
+                        <optgroup [label]="r.nombre">
+                          @for (x of r.comunas; track x) { <option [value]="mayus(x)">{{ x }}</option> }
+                        </optgroup>
+                      }
+                    </select>
+                  } @else {
                   @switch (c.type) {
                     @case ('textarea') {
                       <textarea [id]="'c-' + c.key" rows="4" [placeholder]="c.placeholder ?? ''" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)"></textarea>
@@ -183,9 +210,11 @@
                       </select>
                     }
                     @default {
-                      <input [id]="'c-' + c.key" [type]="inputType(c)" [placeholder]="c.placeholder ?? (c.type === 'rut' ? '12.345.678-5' : '')" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
+                      <input [id]="'c-' + c.key" [type]="inputType(c)" [placeholder]="c.placeholder ?? ''" [ngModel]="valores()[c.key] ?? ''" (ngModelChange)="setValor(c.key, $event)">
                     }
                   }
+                  }
+                  @if ((c.key === 'fecha_vencimiento' || c.key === 'fecha_termino') && avisoPlazo()) { <p class="notice warn aviso-campo">{{ avisoPlazo() }}</p> }
                 </div>
               }
             </div>
@@ -231,7 +260,7 @@
         }
         <div class="field full">
           <label for="contenido">Contenido (texto plano) · versión guardada: v{{ ultimaVersion() }}</label>
-          <textarea id="contenido" rows="16" [ngModel]="contenido()" (ngModelChange)="contenido.set($event)"></textarea>
+          <textarea id="contenido" rows="16" [ngModel]="contenido()" (ngModelChange)="editarTexto($event)"></textarea>
         </div>
         <div class="acciones">
           <button class="btn-ghost" [disabled]="ocupado() || !puedeEnviar() || !hayCambiosSinGuardar()" (click)="guardar()">Guardar borrador</button>

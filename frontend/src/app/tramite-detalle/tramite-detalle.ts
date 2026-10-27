@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, input, output, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -7,6 +7,22 @@ import {
   ArticuloElegido, CampoPlantilla, CaseDetail, Capabilities, Notificacion, Pago, Plantilla, Tramites,
 } from '../tramites';
 import { ESTADOS, clp, indiceActual, mensajeError, pasosDe } from '../flujo';
+import { Auth, PREFIJO_AVANCE } from '../auth';
+import { REGIONES, esComuna, esComunaValida, esRegion, esRegionValida, mayus, regionDe, regionDeComuna } from '../chile';
+import { esFecha, fechaIso, fechaTexto, mesesEntre, sumarMeses } from '../fechas';
+
+/** Lo que el cliente lleva escrito y aún no está en el servidor. Se guarda solo en este navegador. */
+interface Avance {
+  plantillaId: number | null;
+  valores: Record<string, string>;
+  articulos: ArticuloElegido[];
+  contenido: string;
+  base: number;      // versión del servidor sobre la que se editó el texto
+  rehacer: boolean;
+}
+const EDITABLES = ['borrador', 'en_redaccion', 'observado'];
+// Con el trámite en revisión o después, el avance local ya no sirve y se borra (contiene RUT y direcciones).
+const CONSERVAR = [...EDITABLES, 'pendiente_pago'];
 
 @Component({
   imports: [FormsModule, NgTemplateOutlet],
@@ -35,6 +51,11 @@ export class TramiteDetalle implements OnInit {
   valores = signal<Record<string, string>>({});
   articulos = signal<ArticuloElegido[]>([]);   // artículos elegidos (plantillas con {{clausulas}})
   rehacer = signal(false);                      // volver al formulario aunque ya exista un documento (solo en borrador)
+
+  // ---- Avance guardado en el navegador ----
+  private restaurado = false;    // no se escribe nada hasta haber intentado recuperar lo anterior
+  tocado = signal(false);        // hay cambios del cliente que aún no se guardan en el servidor
+  recuperado = signal(false);    // se cargó un avance guardado en este navegador
 
   readonly clp = clp;
 
@@ -115,9 +136,71 @@ export class TramiteDetalle implements OnInit {
     this.notifs().find(n => n.case_id === this.id() && n.message.includes('observado'))?.message ?? ''
   );
 
-  constructor(private api: Tramites, private router: Router) { }
+  /** Cambios que se perderían en otro dispositivo: formulario aún sin generar, o texto editado sin guardar. */
+  sinGuardar = computed(() =>
+    this.tocado() && EDITABLES.includes(this.estado()) && (this.primeraRedaccion() || this.hayCambiosSinGuardar())
+  );
+
+  constructor(private api: Tramites, private router: Router, private auth: Auth) {
+    // Cada cambio del formulario o del texto se guarda en el navegador.
+    effect(() => {
+      const avance: Avance = {
+        plantillaId: this.plantillaId(), valores: this.valores(), articulos: this.articulos(),
+        contenido: this.contenido(), base: this.ultimaVersion(), rehacer: this.rehacer(),
+      };
+      if (this.restaurado && this.tocado() && EDITABLES.includes(this.estado())) this.escribirAvance(avance);
+    });
+  }
 
   ngOnInit() { this.cargar(); }
+
+  // ---- Avance local (localStorage) ----
+  private claveAvance() { return `${PREFIJO_AVANCE}${this.auth.currentRole()?.id ?? 0}-${this.id()}`; }
+  private leerAvance(): Avance | null {
+    try { return JSON.parse(localStorage.getItem(this.claveAvance()) ?? 'null'); } catch { return null; }
+  }
+  private escribirAvance(a: Avance) {
+    try { localStorage.setItem(this.claveAvance(), JSON.stringify(a)); } catch { /* sin storage disponible */ }
+  }
+  private borrarAvance() {
+    try { localStorage.removeItem(this.claveAvance()); } catch { /* sin storage disponible */ }
+  }
+  private restaurarAvance() {
+    const a = this.leerAvance();
+    if (!a || !EDITABLES.includes(this.estado())) return;
+    let algo = false;
+    if (a.plantillaId !== null && this.plantillas().some(p => p.id === a.plantillaId)) {
+      if (this.plantillaId() !== a.plantillaId) this.elegirPlantilla(String(a.plantillaId));
+      this.valores.update(v => ({ ...v, ...a.valores }));
+      this.articulos.set(a.articulos ?? []);
+      algo = Object.keys(a.valores ?? {}).length > 0 || (a.articulos ?? []).length > 0;
+    }
+    // El texto editado solo se recupera si sigue basado en la versión que hay en el servidor.
+    const textoNuevo = a.base === this.ultimaVersion() && !!a.contenido && a.contenido !== this.contenido();
+    if (textoNuevo) this.contenido.set(a.contenido);
+    if (a.rehacer && this.estado() === 'borrador') this.rehacer.set(true);
+    if (!algo && !textoNuevo) return;
+    this.recuperado.set(true);
+    this.tocado.set(true);
+  }
+  descartarAvance() {
+    this.borrarAvance();
+    this.recuperado.set(false);
+    this.tocado.set(false);
+    this.rehacer.set(false);
+    this.articulos.set([]);
+    this.valores.set(this.conDefectos(this.campos()));
+    this.contenido.set(this.tramite()?.documents[0]?.content ?? '');
+  }
+
+  volver() {
+    if (this.sinGuardar() && !confirm('Tienes cambios que aún no se guardan en el servidor. Quedarán en este navegador para cuando vuelvas, pero no en otros dispositivos. ¿Salir igual?')) return;
+    this.cerrar.emit();
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  avisarAlCerrar(e: BeforeUnloadEvent) {
+    if (this.sinGuardar()) { e.preventDefault(); e.returnValue = ''; }
+  }
 
   async cargar() {
     this.cargando.set(true);
@@ -137,6 +220,8 @@ export class TramiteDetalle implements OnInit {
       this.caps.set(caps);
       this.contenido.set(t.documents[0]?.content ?? '');
       if (t.template_id && this.plantillaId() === null && plantillas.items.some(p => p.id === t.template_id)) this.elegirPlantilla(String(t.template_id));
+      if (!CONSERVAR.includes(t.status)) this.borrarAvance();
+      if (!this.restaurado) { this.restaurarAvance(); this.restaurado = true; }
     } catch (e) {
       this.error.set(mensajeError(e));
     } finally {
@@ -151,6 +236,9 @@ export class TramiteDetalle implements OnInit {
     this.aviso.set('');
     try {
       await fn();
+      this.tocado.set(false);      // lo escrito ya quedó en el servidor
+      this.recuperado.set(false);
+      this.borrarAvance();
       await this.cargar();
       this.cambio.emit();
       if (okMsg) this.aviso.set(okMsg);
@@ -186,12 +274,116 @@ export class TramiteDetalle implements OnInit {
   agregarArticulo(key: string) {
     const d = this.defArticulo(key);
     if (d) this.articulos.update(a => [...a, { key, values: this.conDefectos(d.fields) }]);
+    this.tocado.set(true);
   }
-  quitarArticulo(i: number) { this.articulos.update(a => a.filter((_, j) => j !== i)); }
+  quitarArticulo(i: number) { this.articulos.update(a => a.filter((_, j) => j !== i)); this.tocado.set(true); }
   setValorArticulo(i: number, k: string, v: string) {
     this.articulos.update(a => a.map((x, j) => (j === i ? { ...x, values: { ...x.values, [k]: v } } : x)));
+    this.tocado.set(true);
   }
-  setValor(k: string, v: string) { this.valores.update(o => ({ ...o, [k]: v })); }
+  setValor(k: string, v: string) {
+    this.valores.update(o => {
+      const nuevos = { ...o, [k]: v, ...this.ajusteUbicacion(o, k, v) };
+      return { ...nuevos, ...this.ajusteFechas(nuevos, k) };
+    });
+    this.tocado.set(true);
+  }
+
+  // ---- Fechas: calendario y cálculo automático del plazo ----
+  readonly fechaIso = fechaIso;
+  esCampoFecha(c: CampoPlantilla) { return c.type === 'text' && esFecha(c.key); }
+  /** El calendario entrega "2026-01-01"; en el contrato se guarda "01 DE ENERO DE 2026". */
+  setFecha(k: string, iso: string) { this.setValor(k, fechaTexto(iso)); }
+
+  /** Pone puntos y guion mientras el cliente escribe: 123456785 → 12.345.678-5 */
+  setRut(k: string, v: string, input: HTMLInputElement) {
+    const limpio = v.toUpperCase().replace(/[^0-9K]/g, '');
+    const cuerpo = limpio.slice(0, -1).replace(/\D/g, '').slice(0, 8), dv = limpio.slice(-1);
+    const rut = cuerpo ? `${cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}` : dv;
+    input.value = rut;   // si se escribió una letra no válida, se borra de la pantalla
+    this.setValor(k, rut);
+  }
+
+  /** Inicio + duración = término. Cada plantilla nombra distinto sus campos; si falta alguno, no se calcula nada. */
+  private vinculoPlazo() {
+    const claves = new Set(this.campos().map(c => c.key));
+    const primera = (...ks: string[]) => ks.find(k => claves.has(k));
+    const inicio = primera('fecha_inicio', 'fecha_contrato');
+    const fin = primera('fecha_termino', 'fecha_vencimiento');
+    const meses = primera('duracion_meses', 'plazo', 'vigencia_meses');
+    return inicio && fin && meses ? { inicio, fin, meses } : null;
+  }
+  /** Si cambia el inicio o la duración, recalcula el término; si cambia el término, recalcula la duración. */
+  private ajusteFechas(o: Record<string, string>, k: string): Record<string, string> {
+    const p = this.vinculoPlazo();
+    if (!p || ![p.inicio, p.fin, p.meses].includes(k)) return {};
+    const inicio = fechaIso(o[p.inicio] ?? ''), fin = fechaIso(o[p.fin] ?? '');
+    const meses = parseInt(o[p.meses] ?? '', 10);   // "12", "12 meses" → 12
+    if (!inicio) return {};
+    if (k !== p.fin && meses > 0) return { [p.fin]: fechaTexto(sumarMeses(inicio, meses)) };
+    if (k !== p.meses && fin) {
+      const n = mesesEntre(inicio, fin);
+      return { [p.meses]: n === null ? '' : this.textoMeses(p.meses, n) };
+    }
+    return {};
+  }
+  /** La duración se escribe según el tipo de campo: "12" en una lista o número, "12 meses" en texto. */
+  private textoMeses(key: string, n: number) {
+    const c = this.campos().find(x => x.key === key)!;
+    if (c.type === 'select') return c.options?.includes(String(n)) ? String(n) : '';
+    return c.type === 'number' ? String(n) : `${n} ${n === 1 ? 'mes' : 'meses'}`;
+  }
+
+    /** Avisa cuando las fechas no calzan con una duración permitida (la duración queda vacía). */
+    avisoPlazo = computed(() => {
+      const p = this.vinculoPlazo(), v = this.valores();
+      if (!p || v[p.meses]) return '';
+      const inicio = fechaIso(v[p.inicio] ?? ''), fin = fechaIso(v[p.fin] ?? '');
+      if (!inicio || !fin) return '';
+      const n = mesesEntre(inicio, fin);
+      if (n === null) return 'La fecha de término debe caer el mismo día del mes que la de inicio (por ejemplo, del 01/01 al 01/07).';
+      const opciones = this.campos().find(c => c.key === p.meses)?.options;
+      return opciones ? `Entre esas fechas hay ${n} meses, pero la duración solo puede ser de ${opciones.join(', ')} meses. Cambia la fecha de término o elige la duración.` : '';
+    });
+  
+
+
+
+  // ---- Región y comuna: listas desplegables enlazadas ----
+  readonly regiones = REGIONES;
+  readonly mayus = mayus;
+  /** Los campos de texto llamados `*_region` / `*_comuna` se muestran como listas de Chile. */
+  ubicacion(c: CampoPlantilla): 'region' | 'comuna' | null {
+    if (c.type !== 'text') return null;
+    return esRegion(c.key) ? 'region' : esComuna(c.key) ? 'comuna' : null;
+  }
+  /** Solo las comunas de la región elegida; sin región, todas agrupadas por región. */
+  comunasPara(comunaKey: string) {
+    const region = this.valores()[regionDe(comunaKey)];
+    const r = region && REGIONES.find(x => mayus(x.nombre) === region);
+    return r ? [r] : REGIONES;
+  }
+  /** Un valor escrito antes de existir la lista (ej. "Stgo") se conserva como opción para no perderlo. */
+  fueraDeLista(c: CampoPlantilla) {
+    const v = this.valores()[c.key];
+    return !!v && !(this.ubicacion(c) === 'region' ? esRegionValida(v) : esComunaValida(v));
+  }
+  /** Al elegir comuna se completa su región; al cambiar de región se limpia una comuna que ya no le pertenece. */
+  private ajusteUbicacion(o: Record<string, string>, k: string, v: string): Record<string, string> {
+    const claves = new Set(this.campos().filter(c => c.type === 'text').map(c => c.key));
+    if (!claves.has(k)) return {};
+    if (esRegion(k)) {
+      const ck = k.slice(0, -'region'.length) + 'comuna', comuna = o[ck];
+      const region = comuna && regionDeComuna(comuna);
+      if (claves.has(ck) && region && mayus(region) !== v) return { [ck]: '' };
+    } else if (esComuna(k) && v) {
+      const rk = regionDe(k), region = regionDeComuna(v);
+      if (claves.has(rk) && region) return { [rk]: mayus(region) };
+    }
+    return {};
+  }
+  editarTexto(v: string) { this.contenido.set(v); this.tocado.set(true); }
+  cambiarPlantilla(id: string) { this.elegirPlantilla(id); this.tocado.set(true); }
 
   /** Paso 1: del formulario al documento. El backend valida RUT, correo y opciones; se guarda como versión nueva. NO cobra. */
   generarDocumento() {

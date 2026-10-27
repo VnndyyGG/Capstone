@@ -1,51 +1,205 @@
 <div class="page-head">
-    <div>
-      <h1>Trámites asignados</h1>
-      <p>Gestiona tus trámites y consulta datos de cualquier cliente para hacer seguimiento.</p>
+  <div>
+    <h1>Trámites asignados</h1>
+    <p>Revisa los documentos pagados por tus clientes y apruébalos u obsérvalos.</p>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card destacado">
+    <div class="kpi-label">Por revisar</div>
+    <div class="kpi-value">{{ porRevisar().length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Observados</div>
+    <div class="kpi-value">{{ observados().length }}</div>
+    <div class="kpi-hint">Esperan correcciones del cliente</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Listos para cerrar</div>
+    <div class="kpi-value">{{ listosCerrar().length }}</div>
+    <div class="kpi-hint">Aprobados sin firma</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Cerrados este mes</div>
+    <div class="kpi-value">{{ cerradosMes() }}</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab" [class.active]="activeTab() === 'bandeja'" (click)="showTab('bandeja')">Mi bandeja</button>
+  <button class="tab" [class.active]="activeTab() === 'todos'" (click)="showTab('todos')">Todos mis trámites</button>
+  <button class="tab" [class.active]="activeTab() === 'clientes'" (click)="showTab('clientes')">Clientes</button>
+</div>
+
+@if (cargando()) {
+  <p>Cargando trámites...</p>
+} @else if (error()) {
+  <p class="login-error">{{ error() }}</p>
+} @else {
+
+  @if (activeTab() === 'bandeja') {
+    <div class="revision-layout" [class.con-detalle]="detalle() || cargandoDetalle()">
+      <div>
+        <div class="filtros">
+          <button class="chip" [class.activo]="filtro() === 'en_revision'" (click)="filtro.set('en_revision')">Por revisar ({{ porRevisar().length }})</button>
+          <button class="chip" [class.activo]="filtro() === 'observado'" (click)="filtro.set('observado')">Observados ({{ observados().length }})</button>
+          <button class="chip" [class.activo]="filtro() === 'aprobado'" (click)="filtro.set('aprobado')">Aprobados ({{ aprobados().length }})</button>
+        </div>
+
+        <div class="bandeja">
+          @for (t of bandeja(); track t.id) {
+            <button class="bandeja-item" [class.sel]="detalle()?.id === t.id" (click)="abrir(t.id)">
+              <div class="fila">
+                <span class="folio">{{ t.folio }}</span>
+                <span class="badge espera" [class]="esperaClase(t.updated_at)">{{ esperaTexto(t.updated_at) }}</span>
+              </div>
+              <div class="servicio">{{ t.service_name }}</div>
+              <div class="muted">{{ t.client_name }}</div>
+            </button>
+          } @empty {
+            <p class="muted vacio">
+              @switch (filtro()) {
+                @case ('en_revision') { No tienes documentos por revisar. Cuando un cliente pague un trámite, aparecerá aquí. }
+                @case ('observado') { No tienes trámites esperando correcciones del cliente. }
+                @default { No tienes trámites aprobados pendientes. }
+              }
+            </p>
+          }
+        </div>
+      </div>
+
+      @if (cargandoDetalle()) {
+        <div class="panel-revision"><p>Cargando trámite...</p></div>
+      } @else if (detalle(); as t) {
+        <div class="panel-revision">
+          <div class="fila">
+            <h2>{{ t.folio }}</h2>
+            <button class="btn-ghost cerrar" (click)="cerrar()" aria-label="Cerrar">✕</button>
+          </div>
+          <span class="badge" [class]="estadoClase(t.status)">{{ estadoLabel(t.status) }}</span>
+          <p class="muted meta">
+            {{ t.service_name }} · {{ clp(t.amount) }}
+            @if (documentoActual(); as d) { · versión {{ d.version }} del documento }
+          </p>
+
+          @if (documentoActual(); as d) {
+            <pre class="doc-preview">{{ d.content }}</pre>
+            <div class="enlaces">
+              <button class="row-action" (click)="bajarDocumento(d.id, d.version)">Descargar PDF</button>
+              @for (a of t.attachments; track a.id) {
+                <button class="row-action" (click)="bajarAdjunto(a.id, a.name)">Adjunto: {{ a.name }}</button>
+              }
+            </div>
+            @if (t.documents.length > 1) {
+              <details class="versiones">
+                <summary>Versiones anteriores ({{ t.documents.length - 1 }})</summary>
+                @for (v of t.documents.slice(1); track v.id) {
+                  <button class="row-action" (click)="bajarDocumento(v.id, v.version)">Versión {{ v.version }} · {{ v.created_at.slice(0, 10) }}</button>
+                }
+              </details>
+            }
+          } @else {
+            <p class="muted">Este trámite todavía no tiene documento.</p>
+          }
+
+          @if (aviso()) { <p class="aviso">{{ aviso() }}</p> }
+          @if (errorAccion()) { <p class="login-error">{{ errorAccion() }}</p> }
+
+          @switch (t.status) {
+            @case ('en_revision') {
+              <div class="field">
+                <label for="motivo">Observaciones para el cliente</label>
+                <textarea id="motivo" rows="3" maxlength="1000" placeholder="Obligatorio solo si vas a observar el documento"
+                  [ngModel]="motivo()" (ngModelChange)="motivo.set($event); errorAccion.set('')"></textarea>
+              </div>
+              <div class="acciones">
+                <button class="btn-primary" [disabled]="procesando()" (click)="cambiar('aprobado')">Aprobar</button>
+                <button class="btn-ghost" [disabled]="procesando()" (click)="cambiar('observado')">Observar</button>
+              </div>
+            }
+            @case ('aprobado') {
+              @if (t.requires_signature) {
+                <p class="muted">Aprobado. Queda pendiente la firma electrónica avanzada, que aún no está integrada.</p>
+              } @else {
+                <div class="acciones">
+                  <button class="btn-primary" [disabled]="procesando()" (click)="cambiar('completado')">Completar trámite</button>
+                </div>
+              }
+            }
+            @case ('observado') { <p class="muted">Esperando que el cliente corrija el documento y lo vuelva a enviar.</p> }
+          }
+        </div>
+      }
     </div>
-  </div>
-  
-  <div class="scope-note">Puedes editar solo tus trámites asignados; la consulta de otros clientes queda registrada en auditoría (RF-10)</div>
-  
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab() === 'mistramites'" (click)="showTab('mistramites')">Mis trámites asignados</button>
-    <button class="tab" [class.active]="activeTab() === 'buscar'" (click)="showTab('buscar')">Buscar cliente</button>
-  </div>
-  
-  @if (activeTab() === 'mistramites') {
+  }
+
+  @if (activeTab() === 'todos') {
     <table>
       <thead>
-        <tr>
-          <th>Folio</th>
-          <th>Cliente</th>
-          <th>Documento</th>
-          <th>Estado</th>
-          <th></th>
-        </tr>
+        <tr><th>Folio</th><th>Cliente</th><th>Documento</th><th>Actualizado</th><th>Estado</th><th></th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td class="folio">EO-2026-0521</td>
-          <td>María José Pérez</td>
-          <td>Contrato de arriendo</td>
-          <td><span class="badge completo">Firmado</span></td>
-          <td><a class="row-action" href="#">Ver</a></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0538</td>
-          <td>Constructora Rivas Ltda.</td>
-          <td>Orden de compra</td>
-          <td><span class="badge redaccion">En redacción</span></td>
-          <td><a class="row-action" href="#">Gestionar</a></td>
-        </tr>
+        @for (t of tramites(); track t.id) {
+          <tr>
+            <td class="folio">{{ t.folio }}</td>
+            <td>{{ t.client_name }}</td>
+            <td>{{ t.service_name }}</td>
+            <td>{{ t.updated_at.slice(0, 10) }}</td>
+            <td><span class="badge" [class]="estadoClase(t.status)">{{ estadoLabel(t.status) }}</span></td>
+            <td><button class="row-action" (click)="abrirDesdeCliente(t.id)">Ver</button></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="muted">Todavía no tienes trámites asignados.</td></tr>
+        }
       </tbody>
     </table>
   }
-  
-  @if (activeTab() === 'buscar') {
-    <div class="search-bar">
-      <input type="text" placeholder="Buscar cliente por nombre o RUT...">
-      <button class="btn-primary">Buscar</button>
-    </div>
-    <p class="muted">Escribe un nombre o RUT para consultar los trámites de cualquier cliente (la consulta queda registrada en auditoría).</p>
+
+  @if (activeTab() === 'clientes') {
+    <div class="scope-note">Cada búsqueda queda registrada en la auditoría (RF-10)</div>
+    <form class="search-bar" (ngSubmit)="buscar()">
+      <input type="text" name="q" placeholder="Nombre, RUT o correo del cliente" maxlength="120"
+        [ngModel]="q()" (ngModelChange)="q.set($event); errorBusqueda.set('')">
+      <button class="btn-primary" type="submit" [disabled]="buscando()">Buscar</button>
+    </form>
+    @if (errorBusqueda()) { <p class="login-error">{{ errorBusqueda() }}</p> }
+
+    @if (clientes(); as lista) {
+      @for (c of lista; track c.id) {
+        <div class="client-result">
+          <div class="cr-head">
+            <div>
+              <h3>{{ c.name }}</h3>
+              <div class="cr-meta">{{ c.rut ? rutConPuntos(c.rut) : 'Sin RUT' }} · {{ c.email }}</div>
+            </div>
+            <button class="row-action" (click)="verCliente(c)">Ver trámites</button>
+          </div>
+          @if (clienteSel()?.id === c.id) {
+            <table>
+              <thead><tr><th>Folio</th><th>Documento</th><th>Creado</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                @for (t of tramitesCliente(); track t.id) {
+                  <tr>
+                    <td class="folio">{{ t.folio }}</td>
+                    <td>{{ t.service_name }}</td>
+                    <td>{{ t.created_at.slice(0, 10) }}</td>
+                    <td><span class="badge" [class]="estadoClase(t.status)">{{ estadoLabel(t.status) }}</span></td>
+                    <td>
+                      @if (esMio(t.id)) { <button class="row-action" (click)="abrirDesdeCliente(t.id)">Abrir</button> }
+                      @else { <span class="muted">Otro ejecutivo</span> }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="muted">Este cliente no tiene trámites.</td></tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      } @empty {
+        <p class="muted">No se encontraron clientes con esa búsqueda.</p>
+      }
+    }
   }
+}
