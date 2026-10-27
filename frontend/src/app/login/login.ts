@@ -71,14 +71,14 @@ export class Login {
 
   async onSubmit() {
     if (!this.email.trim() || !this.password) {
-      this.errorLogin.set('Ingresa tu correo y tu contraseña.');
+      this.errorLogin.set('Ingresa tu correo o RUT y tu contraseña.');
       return;
     }
     this.cargando.set(true);
     const ok = await this.auth.attemptLogin(this.email.trim(), this.password);
     this.cargando.set(false);
     if (!ok) {
-      this.errorLogin.set('Correo o contraseña incorrectos.');
+      this.errorLogin.set('Correo/RUT o contraseña incorrectos.');
       return;
     }
     this.errorLogin.set('');

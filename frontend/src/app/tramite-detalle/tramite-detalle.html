@@ -174,11 +174,22 @@
         @if (plantillaSel()) {
           @for (s of secciones(); track s.titulo) {
             <h3>{{ s.titulo }}</h3>
+            @if (s.titulo === 'Sucursal') {
+              <div class="field full">
+                <label for="sucursal">Sucursal de Easy Office</label>
+                <select id="sucursal" [ngModel]="sucursalElegida()" (ngModelChange)="elegirSucursal($event)">
+                  <option value="" disabled>Selecciona la sucursal…</option>
+                  @for (su of sucursales; track su.sigla) { <option [value]="su.sigla">{{ su.nombre }}</option> }
+                </select>
+              </div>
+            }
             <div class="form-grid">
               @for (c of s.campos; track c.key) {
                 <div class="field" [class.full]="c.type === 'textarea'">
                   <label [attr.for]="'c-' + c.key">{{ c.label }}@if (!c.required) { <span class="muted"> (opcional)</span> }</label>
-                  @if (esCampoFecha(c)) {
+                  @if (esCampoSucursal(c)) {
+                    <input [id]="'c-' + c.key" [value]="valores()[c.key] ?? ''" readonly class="fijo">
+                  } @else if (esCampoFecha(c)) {
                     <input [id]="'c-' + c.key" type="date" [ngModel]="fechaIso(valores()[c.key] ?? '')" (ngModelChange)="setFecha(c.key, $event)">
                   } @else if (esDireccion(c)) {
                     <div class="autocompletar">

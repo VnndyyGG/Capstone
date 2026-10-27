@@ -95,6 +95,7 @@ function createApp(db, options = {}) {
     const hash = await hashPassword(v.password(b.password));
     const result = await atomic(async () => {
       if (await one('SELECT id FROM users WHERE email=?', email)) v.fail(409, 'EMAIL_EXISTS', 'El correo ya está registrado.');
+      if (await one("SELECT id FROM users WHERE rut=? AND role='cliente'", rut)) v.fail(409, 'RUT_EXISTS', 'El RUT ya está registrado.');
       const userId = await insert('INSERT INTO users(name,email,password_hash,rut,role,created_at) VALUES(?,?,?,?,?,?)', name, email, hash, rut, 'cliente', now());
       const user = await one('SELECT * FROM users WHERE id=?', userId);
       await audit(user.id, 'usuario.registro', 'usuario', user.id);
@@ -104,15 +105,24 @@ function createApp(db, options = {}) {
   });
   app.post('/api/auth/login', authLimit, async (req, res) => {
     const b = req.body || {};
-    const email = v.email(b.email);
     if (typeof b.password !== 'string' || b.password.length > 128) v.fail(400, 'VALIDATION_ERROR', 'Contraseña inválida.');
-    const user = await one('SELECT * FROM users WHERE email=?', email);
+    // El campo "email" acepta el correo o, solo para clientes, el RUT (12.345.678-9, 12345678-9 o 123456789).
+    const usuario = typeof b.email === 'string' ? b.email.trim() : '';
+    let user;
+    if (usuario.includes('@')) {
+      user = await one('SELECT * FROM users WHERE email=?', v.email(usuario));
+    } else {
+      const rut = v.rut(usuario || 'x');   // valida el dígito verificador y lo deja como 12345678-9
+      const encontrados = await all("SELECT * FROM users WHERE rut=? AND role='cliente' LIMIT 2", rut);
+      user = encontrados.length === 1 ? encontrados[0] : undefined;   // RUT repetido: no se adivina la cuenta, debe usar su correo
+    }
+
     const hash = user?.password_hash || '00000000000000000000000000000000:' + '00'.repeat(64);
     const valid = await verifyPassword(b.password, hash);
-    if (!user || !user.active || !valid) { await audit(null, 'auth.fallo', 'sesion'); v.fail(401, 'INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.'); }
+    if (!user || !user.active || !valid) { await audit(null, 'auth.fallo', 'sesion'); v.fail(401, 'INVALID_CREDENTIALS', 'Correo/RUT o contraseña incorrectos.'); }
     // Releer tras scrypt asíncrono para respetar desactivaciones concurrentes.
     const current = await one('SELECT * FROM users WHERE id=?', user.id);
-    if (!current.active || current.password_hash !== hash) v.fail(401, 'INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.');
+    if (!current.active || current.password_hash !== hash) v.fail(401, 'INVALID_CREDENTIALS', 'Correo/RUT o contraseña incorrectos.');
     const result = await atomic(async () => { await audit(user.id, 'auth.login', 'usuario', user.id); return issueSession(current); });
     res.json(result);
   });

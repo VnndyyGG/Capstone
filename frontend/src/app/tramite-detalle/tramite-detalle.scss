@@ -50,3 +50,4 @@
 .con-signo { position: relative; }
 .con-signo span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); pointer-events: none; }
 .con-signo input { padding-left: 26px; }
+.field input.fijo { background: var(--surface); color: var(--ink-soft); cursor: default; }

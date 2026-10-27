@@ -38,13 +38,13 @@
 
       @if (!isToggled()) {
       <div class="view">
-        <p class="sub">Ingresa tu correo y contraseña para acceder al portal.</p>
+        <p class="sub">Ingresa con tu correo o tu RUT y tu contraseña.</p>
 
         <form class="login-form" (ngSubmit)="onSubmit()">
           <div class="field">
-            <label for="login-email">Correo electrónico</label>
-            <input id="login-email" type="email" name="email" [(ngModel)]="email" required autocomplete="email"
-              placeholder="tucorreo@easyoffice.cl">
+            <label for="login-email">Correo electrónico o RUT</label>
+            <input id="login-email" type="text" name="email" [(ngModel)]="email" required autocomplete="username"
+              placeholder="tucorreo@easyoffice.cl o 12.345.678-5">
           </div>
           <div class="field">
             <label for="login-password">Contraseña</label>

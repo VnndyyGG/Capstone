@@ -12,6 +12,8 @@ import { REGIONES, comunaOficial, esComuna, esComunaValida, esRegion, esRegionVa
 import { esFecha, fechaIso, fechaTexto, mesesEntre, sumarMeses } from '../fechas';
 import { MARCAS, aniosVehiculo, formatoPatente } from '../vehiculos';
 import { montoEnPalabras } from '../montos';
+import { CAMPOS_SUCURSAL, SUCURSALES } from '../sucursales';
+
 
 /** Lo que el cliente lleva escrito y aún no está en el servidor. Se guarda solo en este navegador. */
 interface Avance {
@@ -265,8 +267,22 @@ export class TramiteDetalle implements OnInit {
   }
   defArticulo(key: string) { return this.plantillaSel()?.clauses.find(c => c.key === key); }
   private conDefectos(campos: CampoPlantilla[]) {
-    return Object.fromEntries(campos.filter(c => c.default).map(c => [c.key, c.default!]));
+    const defectos = Object.fromEntries(campos.filter(c => c.default).map(c => [c.key, c.default!]));
+    // Contratos con sucursal: se precargan los datos de la primera (hoy, La Florida).
+    return campos.some(c => c.key === 'sucursal_direccion') ? { ...defectos, ...SUCURSALES[0].valores } : defectos;
   }
+
+  // ---- Sucursal: sus datos se completan solos y no se pueden editar ----
+  readonly sucursales = SUCURSALES;
+  esCampoSucursal(c: CampoPlantilla) { return CAMPOS_SUCURSAL.includes(c.key); }
+  /** La sucursal cuyos datos coinciden con los del formulario ('' si no coincide ninguna). */
+  sucursalElegida = computed(() =>
+    SUCURSALES.find(s => s.valores['sucursal_direccion'] === this.valores()['sucursal_direccion'])?.sigla ?? '');
+  elegirSucursal(sigla: string) {
+    const s = SUCURSALES.find(x => x.sigla === sigla);
+    if (s) { this.valores.update(v => ({ ...v, ...s.valores })); this.tocado.set(true); }
+  }
+
   inputType(c: CampoPlantilla) { return c.type === 'email' ? 'email' : 'text'; }
   elegirPlantilla(id: string) {
     this.plantillaId.set(id ? Number(id) : null);
