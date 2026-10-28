@@ -1,64 +1,258 @@
 <div class="page-head">
-    <div>
-      <h1>Panel de administración</h1>
-      <p>Acceso completo: trámites de todos los clientes, usuarios, plantillas e indicadores.</p>
-    </div>
+  <div>
+    <h1>Panel de administración</h1>
+    <p>Acceso completo: trámites de todos los clientes, usuarios, plantillas e indicadores.</p>
   </div>
-  
-  <div class="scope-note">Rol con acceso total al sistema (RF-09) — cada acción queda en la bitácora de auditoría (RF-10)</div>
-  
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab() === 'tramites'" (click)="showTab('tramites')">Trámites (todos)</button>
-    <button class="tab" [class.active]="activeTab() === 'usuarios'" (click)="showTab('usuarios')">Usuarios</button>
-    <button class="tab" [class.active]="activeTab() === 'plantillas'" (click)="showTab('plantillas')">Plantillas</button>
-    <button class="tab" [class.active]="activeTab() === 'indicadores'" (click)="showTab('indicadores')">Indicadores</button>
+</div>
+
+<div class="scope-note">Rol con acceso total al sistema (RF-09) — cada acción queda en la bitácora de auditoría (RF-10)</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Trámites activos</div>
+    <div class="kpi-value">{{ activos() }}</div>
   </div>
-  
+  <div class="kpi-card" [class.alerta]="sinAsignar() > 0">
+    <div class="kpi-label">Pagados sin ejecutivo</div>
+    <div class="kpi-value">{{ sinAsignar() }}</div>
+    <div class="kpi-hint">Asígnalos en la tabla de trámites</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Clientes activos</div>
+    <div class="kpi-value">{{ indicadores()?.clientesActivos ?? '—' }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Pagos pendientes</div>
+    <div class="kpi-value">{{ indicadores()?.pagosPendientes ?? '—' }}</div>
+    <div class="kpi-hint">Transferencias por revisar</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab" [class.active]="activeTab() === 'tramites'" (click)="showTab('tramites')">Trámites (todos)</button>
+  <button class="tab" [class.active]="activeTab() === 'usuarios'" (click)="showTab('usuarios')">Usuarios</button>
+  <button class="tab" [class.active]="activeTab() === 'plantillas'" (click)="showTab('plantillas')">Plantillas y precios</button>
+  <button class="tab" [class.active]="activeTab() === 'indicadores'" (click)="showTab('indicadores')">Indicadores</button>
+  <button class="tab" [class.active]="activeTab() === 'auditoria'" (click)="showTab('auditoria')">Auditoría</button>
+</div>
+
+@if (error()) { <p class="login-error">{{ error() }}</p> }
+@if (aviso()) { <p class="notice ok">{{ aviso() }}</p> }
+
+@if (cargando() && !tramites().length) {
+  <p>Cargando panel...</p>
+} @else {
+
+  <!-- ===== Trámites de todos los clientes ===== -->
   @if (activeTab() === 'tramites') {
-    <table>
-      <thead>
-        <tr>
-          <th>Folio</th>
-          <th>Cliente</th>
-          <th>Documento</th>
-          <th>Ejecutivo</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="folio">EO-2026-0521</td>
-          <td>María José Pérez</td>
-          <td>Contrato de arriendo</td>
-          <td>Andy Fuentes</td>
-          <td><span class="badge completo">Firmado</span></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0538</td>
-          <td>Constructora Rivas Ltda.</td>
-          <td>Orden de compra</td>
-          <td>Andy Fuentes</td>
-          <td><span class="badge redaccion">En redacción</span></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0539</td>
-          <td>Pastelería Dulce Hogar</td>
-          <td>Declaración jurada</td>
-          <td class="muted">Sin asignar</td>
-          <td><span class="badge pendiente">Pendiente de pago</span></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="filtros">
+      <input class="buscar" type="search" placeholder="Buscar por folio o cliente"
+             [ngModel]="buscarTramite()" (ngModelChange)="buscarTramite.set($event)">
+      <select [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+        <option value="">Todos los estados</option>
+        @for (e of estados; track e.key) { <option [value]="e.key">{{ e.label }}</option> }
+      </select>
+      <span class="muted">{{ tramitesFiltrados().length }} de {{ tramites().length }}</span>
+    </div>
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr><th>Folio</th><th>Cliente</th><th>Documento</th><th>Monto</th><th>Ejecutivo</th><th>Estado</th><th>Actualizado</th></tr>
+        </thead>
+        <tbody>
+          @for (t of tramitesFiltrados(); track t.id) {
+            <tr>
+              <td class="folio">{{ t.folio }}</td>
+              <td>{{ t.client_name }}</td>
+              <td>{{ t.service_name }}</td>
+              <td>{{ clp(t.amount) }}</td>
+              <td>
+                @if (puedeReasignar(t)) {
+                  <select class="compacto" [disabled]="ocupado()" [ngModel]="t.assigned_id?.toString() ?? ''"
+                          (ngModelChange)="reasignar(t, $event)">
+                    <option value="" disabled>Sin asignar</option>
+                    @for (e of ejecutivos(); track e.id) { <option [value]="e.id">{{ e.name }}</option> }
+                  </select>
+                } @else if (esSinPagar(t)) {
+                  <span class="muted">Se asigna al pagar</span>
+                } @else {
+                  <span [class.muted]="!t.assigned_name">{{ t.assigned_name ?? 'Sin asignar' }}</span>
+                }
+              </td>
+              <td><span class="badge" [class]="estadoClase(t.status)">{{ estadoLabel(t.status) }}</span></td>
+              <td class="muted">{{ fecha(t.updated_at) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted vacio">No hay trámites con esos filtros.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
-  
+
+  <!-- ===== Usuarios ===== -->
   @if (activeTab() === 'usuarios') {
-    <p>Aquí va la tabla de usuarios (la armamos después).</p>
+    <div class="filtros">
+      <button class="chip" [class.activo]="filtroRol() === ''" (click)="filtroRol.set('')">Todos</button>
+      @for (r of roles; track r.key) {
+        <button class="chip" [class.activo]="filtroRol() === r.key" (click)="filtroRol.set(r.key)">{{ r.label }}</button>
+      }
+      <button class="btn-primary derecha" (click)="mostrarNuevo.set(!mostrarNuevo())">
+        {{ mostrarNuevo() ? 'Cerrar' : '+ Nuevo usuario' }}
+      </button>
+    </div>
+
+    @if (mostrarNuevo()) {
+      <form class="panel" (ngSubmit)="crearUsuario()">
+        <h3>Nuevo usuario</h3>
+        <div class="form-grid">
+          <div class="field"><label for="n-nombre">Nombre</label><input id="n-nombre" name="name" [(ngModel)]="nuevo.name"></div>
+          <div class="field"><label for="n-correo">Correo</label><input id="n-correo" name="email" type="email" [(ngModel)]="nuevo.email"></div>
+          <div class="field"><label for="n-rut">RUT</label><input id="n-rut" name="rut" placeholder="12.345.678-5" [(ngModel)]="nuevo.rut"></div>
+          <div class="field">
+            <label for="n-rol">Rol</label>
+            <select id="n-rol" name="tipo" [(ngModel)]="nuevo.tipo">
+              @for (r of roles; track r.key) { <option [value]="r.key">{{ r.label }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="n-clave">Contraseña inicial</label>
+            <input id="n-clave" name="password" type="password" autocomplete="new-password" [(ngModel)]="nuevo.password">
+          </div>
+        </div>
+        <div class="acciones"><button class="btn-primary" type="submit" [disabled]="ocupado()">Crear usuario</button></div>
+      </form>
+    }
+
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>RUT</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          @for (u of usuariosFiltrados(); track u.id) {
+            <tr [class.inactivo]="!u.active">
+              <td>{{ u.name }}</td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.rut || '—' }}</td>
+              <td>
+                <select class="compacto" [disabled]="ocupado()" [ngModel]="u.tipo" (ngModelChange)="cambiarRol(u, $event)">
+                  @for (r of roles; track r.key) { <option [value]="r.key">{{ r.label }}</option> }
+                </select>
+              </td>
+              <td><span class="badge" [class]="u.active ? 'completo' : 'rechazado'">{{ u.active ? 'Activo' : 'Inactivo' }}</span></td>
+              <td><button class="row-action" [disabled]="ocupado()" (click)="cambiarActivo(u)">{{ u.active ? 'Desactivar' : 'Activar' }}</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="muted vacio">No hay usuarios con ese rol.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="muted nota">Un usuario con trámites asociados no puede cambiar de rol, y un ejecutivo con trámites activos no se puede desactivar sin reasignarlos antes.</p>
   }
-  
+
+  <!-- ===== Plantillas y precios ===== -->
   @if (activeTab() === 'plantillas') {
-    <p>Aquí va la tabla de plantillas de documentos.</p>
+    <h3>Plantillas de documentos</h3>
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Documento</th><th>Tipo</th><th>Campos</th><th>Versión</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          @for (p of plantillas(); track p.id) {
+            <tr [class.inactivo]="!p.active">
+              <td>{{ p.name }}</td>
+              <td class="muted">{{ p.categoryLabel }}</td>
+              <td>{{ p.fields.length }}</td>
+              <td>v{{ p.version }}</td>
+              <td><span class="badge" [class]="p.active ? 'completo' : 'rechazado'">{{ p.active ? 'Disponible' : 'Oculta' }}</span></td>
+              <td><button class="row-action" [disabled]="ocupado()" (click)="cambiarPlantilla(p)">{{ p.active ? 'Ocultar' : 'Publicar' }}</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="muted nota">Una plantilla oculta deja de aparecer para los clientes; los trámites ya creados no cambian.</p>
+
+    <h3>Servicios y precios</h3>
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Servicio</th><th>Firma electrónica</th><th>Precio (CLP)</th><th></th></tr></thead>
+        <tbody>
+          @for (s of servicios(); track s.id) {
+            <tr>
+              <td>{{ s.name }}</td>
+              <td class="muted">{{ s.requires_signature ? 'Requiere' : 'No requiere' }}</td>
+              <td><input class="compacto precio" type="number" min="1" step="1" [(ngModel)]="precios[s.id]"></td>
+              <td>
+                @if (precioCambiado(s)) {
+                  <button class="row-action" [disabled]="ocupado()" (click)="guardarPrecio(s)">Guardar</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="muted nota">El nuevo precio se aplica a los trámites que se creen desde ahora.</p>
   }
-  
+
+  <!-- ===== Indicadores ===== -->
   @if (activeTab() === 'indicadores') {
-    <p>Aquí van los KPIs del panel ejecutivo.</p>
+    <div class="indicadores">
+      <section class="panel">
+        <h3>Trámites por estado</h3>
+        @for (f of porEstado(); track f.status) {
+          <div class="barra">
+            <span class="barra-label">{{ f.label }}</span>
+            <span class="barra-fondo"><span class="barra-valor" [class]="estadoClase(f.status)" [style.width.%]="f.pct"></span></span>
+            <span class="barra-total">{{ f.total }}</span>
+          </div>
+        } @empty {
+          <p class="muted">Aún no hay trámites.</p>
+        }
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Finanzas del mes</h3>
+          <input class="compacto" type="month" [ngModel]="mes()" (ngModelChange)="cambiarMes($event)">
+        </div>
+        @if (reporte(); as r) {
+          <div class="resumen">
+            <div><span class="muted">Ingresos</span><strong>{{ clp(r.ingresos) }}</strong></div>
+            <div><span class="muted">Pagos aprobados</span><strong>{{ r.pagosAprobados }}</strong></div>
+            <div><span class="muted">Pagos rechazados</span><strong>{{ r.pagosRechazados }}</strong></div>
+            <div><span class="muted">Ticket promedio</span><strong>{{ clp(r.ticketPromedio) }}</strong></div>
+          </div>
+        } @else {
+          <p class="muted">Cargando reporte...</p>
+        }
+      </section>
+    </div>
   }
+
+  <!-- ===== Auditoría (RF-10) ===== -->
+  @if (activeTab() === 'auditoria') {
+    <p class="muted">Las últimas 100 acciones registradas en el sistema, de la más reciente a la más antigua.</p>
+    @if (auditoria(); as eventos) {
+      <div class="tabla">
+        <table>
+          <thead><tr><th>Fecha (UTC)</th><th>Quién</th><th>Acción</th><th>Sobre</th></tr></thead>
+          <tbody>
+            @for (e of eventos; track e.id) {
+              <tr>
+                <td class="muted">{{ fecha(e.created_at) }}</td>
+                <td>{{ actor(e.actor_id) }}</td>
+                <td>{{ accionLabel(e.action) }}</td>
+                <td class="muted">{{ e.entity }}{{ e.entity_id ? ' #' + e.entity_id : '' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="muted vacio">Sin registros.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p>Cargando auditoría...</p>
+    }
+  }
+}

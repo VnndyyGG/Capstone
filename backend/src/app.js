@@ -5,6 +5,8 @@ const tpl = require('./templates');
 const { createWebpay } = require('./webpay');
 const { createCheckout } = require('./checkout');
 const { documentoPdf, comprobantePdf } = require('./pdf');
+const { createMailer } = require('./mail');
+const { randomInt } = require('node:crypto');
 const now = () => new Date().toISOString();
 const ROLES = ['cliente', 'admin', 'comercial', 'finanzas'];
 
@@ -23,6 +25,7 @@ function createApp(db, options = {}) {
     next();
   };
   const webpay = options.webpay || createWebpay();
+  const mailer = options.mailer || createMailer();
   const frontendUrl = (process.env.FRONTEND_URL || origins[0]).replace(/\/$/, '');
   const issueSession = async user => {
     const accessToken = token();
@@ -126,6 +129,55 @@ function createApp(db, options = {}) {
     const result = await atomic(async () => { await audit(user.id, 'auth.login', 'usuario', user.id); return issueSession(current); });
     res.json(result);
   });
+    // ---- Recuperar contraseña: 1) pedir código por correo, 2) validarlo y elegir una nueva ----
+    const CODIGO_MINUTOS = 15, CODIGO_INTENTOS = 5;
+    app.post('/api/auth/recuperar', authLimit, async (req, res) => {
+      const email = v.email((req.body || {}).email);
+      const user = await one('SELECT * FROM users WHERE email=? AND active=1', email);
+      if (user) {
+        const code = String(randomInt(0, 1000000)).padStart(6, '0');   // 6 dígitos al azar, con ceros a la izquierda
+        const codeHash = await hashPassword(code);   // se guarda encriptado, igual que una contraseña
+        await atomic(async () => {
+          await run('DELETE FROM password_resets WHERE user_id=?', user.id);   // solo vale el último código pedido
+          await insert('INSERT INTO password_resets(user_id,code_hash,attempts,expires_at,created_at) VALUES(?,?,0,?,?)',
+            user.id, codeHash, Date.now() + CODIGO_MINUTOS * 60 * 1000, now());
+          await audit(user.id, 'auth.recuperacion', 'usuario', user.id);
+        });
+        // Sin await: la respuesta tarda lo mismo exista o no el correo (no revela quién tiene cuenta).
+        mailer.send({
+          to: user.email,
+          subject: `Tu código para recuperar la contraseña: ${code}`,
+          text: `Hola ${user.name}:\n\nTu código para crear una nueva contraseña en Easy Office es: ${code}\n\nVence en ${CODIGO_MINUTOS} minutos. Si no lo pediste, ignora este correo: tu contraseña no cambia.`,
+          html: `<p>Hola ${user.name.replace(/[<>&]/g, '')}:</p><p>Tu código para crear una nueva contraseña en Easy Office es:</p>
+            <p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p>
+            <p>Vence en ${CODIGO_MINUTOS} minutos. Si no lo pediste, ignora este correo: tu contraseña no cambia.</p>`,
+        }).catch(e => console.error('No se pudo enviar el correo de recuperación:', e.message));
+      }
+      res.json({ message: 'Si el correo está registrado, te enviamos un código.' });
+    });
+    app.post('/api/auth/restablecer', authLimit, async (req, res) => {
+      const b = req.body || {};
+      const email = v.email(b.email), password = v.password(b.password);
+      const code = typeof b.code === 'string' ? b.code.trim() : '';
+      const invalido = () => v.fail(400, 'INVALID_CODE', 'El código no es válido o ya venció. Pide uno nuevo.');
+      if (!/^\d{6}$/.test(code)) invalido();
+      const user = await one('SELECT * FROM users WHERE email=? AND active=1', email);
+      const reset = user && await one('SELECT * FROM password_resets WHERE user_id=?', user.id);
+      if (!reset || reset.expires_at < Date.now() || reset.attempts >= CODIGO_INTENTOS) invalido();
+      if (!await verifyPassword(code, reset.code_hash)) {
+        await run('UPDATE password_resets SET attempts=attempts+1 WHERE id=?', reset.id);
+        invalido();
+      }
+      const hash = await hashPassword(password);
+      await atomic(async () => {
+        // Se borra el código al usarlo: si llegan dos solicitudes a la vez, solo una lo encuentra.
+        if (!(await run('DELETE FROM password_resets WHERE id=?', reset.id)).changes) invalido();
+        await run('UPDATE users SET password_hash=? WHERE id=?', hash, user.id);
+        await run('DELETE FROM sessions WHERE user_id=?', user.id);   // cierra las sesiones abiertas en otros equipos
+        await audit(user.id, 'auth.password_restablecida', 'usuario', user.id);
+      });
+      res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
+    });  
   checkout.mountPublic(app);
   app.use('/api', async (req, res, next) => {
     const match = /^Bearer ([a-f0-9]{64})$/.exec(req.get('Authorization') || '');
@@ -481,6 +533,50 @@ function createApp(db, options = {}) {
     await audit(req.user.id, 'reporte.finanzas', 'reporte', null, { month });
     res.json({ month, timezone: 'UTC', currency: 'CLP', ingresos: approved.total, pagosAprobados: approved.count, pagosRechazados: rejected.count, ticketPromedio: Math.round(approved.average) });
   });
+    // ---- Reporte de ventas para el panel de finanzas. Las fechas se agrupan en hora de Chile, no en UTC. ----
+    const AGRUPAR = { dia: 'YYYY-MM-DD', mes: 'YYYY-MM', anio: 'YYYY' };
+    const FECHA_CHILE = "((p.reviewed_at)::timestamptz AT TIME ZONE 'America/Santiago')";
+    const diaIso = d => d.toISOString().slice(0, 10);
+    app.get('/api/reportes/ventas', roles('admin', 'finanzas'), async (req, res) => {
+      const fecha = (x, nombre) => {
+        if (typeof x !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(x) || isNaN(Date.parse(x))) v.fail(400, 'VALIDATION_ERROR', `${nombre}: usa el formato AAAA-MM-DD.`);
+        return x;
+      };
+      const desde = fecha(req.query.desde, 'desde'), hasta = fecha(req.query.hasta, 'hasta');
+      if (desde > hasta) v.fail(400, 'VALIDATION_ERROR', 'La fecha "desde" debe ser anterior a "hasta".');
+      const formato = AGRUPAR[req.query.agrupar] || AGRUPAR.dia;   // solo valores de la lista: nunca se mete texto del usuario en el SQL
+      // Período anterior del mismo largo, para comparar (ej.: este mes vs. el mes pasado).
+      const dias = (Date.parse(hasta) - Date.parse(desde)) / 86400000 + 1;
+      const antesHasta = new Date(Date.parse(desde) - 86400000), antesDesde = new Date(antesHasta.getTime() - (dias - 1) * 86400000);
+      const enRango = `p.status='aprobado' AND ${FECHA_CHILE}::date BETWEEN ?::date AND ?::date`;
+      const resumen = async (d, h) => {
+        const r = await one(`SELECT COALESCE(SUM(p.amount),0) AS ingresos, COUNT(*) AS ventas, COUNT(DISTINCT COALESCE(p.order_id, -p.id)) AS compras
+          FROM payments p WHERE ${enRango}`, d, h);
+        const desc = await one(`SELECT COALESCE(SUM(o.discount),0) AS descuentos FROM orders o
+          WHERE o.id IN (SELECT DISTINCT p.order_id FROM payments p WHERE ${enRango})`, d, h);
+        return { ingresos: r.ingresos, ventas: r.ventas, compras: r.compras, descuentos: desc.descuentos,
+          ticketPromedio: r.compras ? Math.round(r.ingresos / r.compras) : 0 };
+      };
+      const rangoOrdenes = "(o.created_at::timestamptz AT TIME ZONE 'America/Santiago')::date BETWEEN ?::date AND ?::date";
+      const [actual, anterior, serie, servicios, mediosPago, fallidos, pagos] = await Promise.all([
+        resumen(desde, hasta),
+        resumen(diaIso(antesDesde), diaIso(antesHasta)),
+        all(`SELECT to_char(${FECHA_CHILE}, '${formato}') AS periodo, SUM(p.amount) AS ingresos, COUNT(*) AS ventas
+          FROM payments p WHERE ${enRango} GROUP BY 1 ORDER BY 1`, desde, hasta),
+        all(`SELECT c.service_name AS servicio, COUNT(*) AS ventas, SUM(p.amount) AS ingresos
+          FROM payments p JOIN cases c ON c.id=p.case_id WHERE ${enRango} GROUP BY c.service_name ORDER BY ingresos DESC`, desde, hasta),
+        all(`SELECT COALESCE(o.payment_type, 'transferencia') AS tipo, COUNT(DISTINCT COALESCE(o.id, -p.id)) AS compras, SUM(p.amount) AS ingresos
+          FROM payments p LEFT JOIN orders o ON o.id=p.order_id WHERE ${enRango} GROUP BY 1 ORDER BY ingresos DESC`, desde, hasta),
+        one(`SELECT COUNT(*) AS ordenes, COALESCE(SUM(o.total),0) AS total FROM orders o
+          WHERE o.status IN ('rechazada','anulada','expirada') AND ${rangoOrdenes}`, desde, hasta),
+        all(`SELECT p.id, to_char(${FECHA_CHILE}, 'YYYY-MM-DD HH24:MI') AS fecha, c.folio, u.name AS cliente, c.service_name AS servicio, p.amount AS monto,
+            o.coupon_code AS cupon, o.payment_type AS tipo, o.card_last4 AS tarjeta, o.installments AS cuotas
+          FROM payments p JOIN cases c ON c.id=p.case_id JOIN users u ON u.id=c.client_id LEFT JOIN orders o ON o.id=p.order_id
+          WHERE ${enRango} ORDER BY p.reviewed_at DESC LIMIT 1000`, desde, hasta),
+      ]);
+      await audit(req.user.id, 'reporte.ventas', 'reporte', null, { desde, hasta });
+      res.json({ desde, hasta, zonaHoraria: 'America/Santiago', actual, anterior, serie, servicios, mediosPago, fallidos, pagos });
+    });  
   app.get('/api/indicadores', roles('admin'), async (req, res) => {
     res.json({
       tramitesPorEstado: await all('SELECT status,COUNT(*) AS total FROM cases GROUP BY status'),

@@ -103,3 +103,12 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 CREATE INDEX IF NOT EXISTS order_items_case ON order_items(case_id);
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS order_id INTEGER REFERENCES orders(id);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at BIGINT NOT NULL,
+  created_at TEXT NOT NULL
+);

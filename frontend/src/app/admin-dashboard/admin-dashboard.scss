@@ -1,0 +1,51 @@
+.kpi-card.alerta {
+  background: var(--amber-bg);
+  border-color: var(--amber-bg);
+  .kpi-label, .kpi-value { color: var(--amber); }
+}
+.kpi-hint { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+
+.notice { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin: 0 0 16px; }
+.notice.ok { background: var(--green-bg); color: var(--green-status); }
+
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.buscar { flex: 1 1 220px; max-width: 320px; }
+.filtros input, .filtros select, .compacto {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13.5px; background: var(--white);
+}
+.chip {
+  border: 1px solid var(--border); background: var(--white); border-radius: 20px;
+  padding: 6px 13px; font-size: 13px; color: var(--ink-soft); cursor: pointer;
+  &.activo { background: var(--blue-bg); border-color: var(--blue-bg); color: var(--blue); font-weight: 600; }
+}
+.derecha { margin-left: auto; }
+
+// Las tablas anchas se desplazan dentro de su caja en pantallas chicas, sin mover toda la página.
+.tabla { overflow-x: auto; margin-bottom: 8px; }
+.tabla td, .tabla th { white-space: nowrap; }
+tr.inactivo td { color: var(--ink-soft); }
+.vacio { text-align: center; padding: 18px; }
+.precio { width: 120px; }
+.nota { font-size: 12.5px; margin: 6px 0 22px; }
+h3 { font-size: 15px; margin: 18px 0 10px; }
+
+.panel { margin: 0 0 18px; padding: 18px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
+.panel h3 { margin-top: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.panel-head h3 { margin: 0; }
+.field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+.acciones { display: flex; gap: 10px; margin-top: 14px; }
+
+.indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.barra { display: grid; grid-template-columns: 130px 1fr 32px; align-items: center; gap: 10px; margin: 8px 0; font-size: 13.5px; }
+.barra-fondo { height: 10px; background: var(--surface); border-radius: 6px; overflow: hidden; }
+.barra-valor {
+  display: block; height: 100%; border-radius: 6px; background: var(--blue);
+  &.pendiente { background: var(--amber); }
+  &.aprobado, &.completo { background: var(--green-status); }
+  &.rechazado { background: var(--ink-soft); }
+}
+.barra-total { text-align: right; font-weight: 600; }
+.resumen { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.resumen div { display: flex; flex-direction: column; gap: 2px; }
+.resumen strong { font-size: 20px; }

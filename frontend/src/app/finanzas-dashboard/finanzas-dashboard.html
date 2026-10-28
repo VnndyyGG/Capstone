@@ -1,73 +1,134 @@
-<p>finanzas-dashboard works!</p>
 <div class="page-head">
-    <div>
-      <h1>Pagos y reportes</h1>
-      <p>Acceso restringido a pagos, comprobantes y reportes financieros.</p>
+  <div>
+    <h1>Ventas y finanzas</h1>
+    <p>Ingresos, trámites más vendidos y medios de pago. Las fechas están en hora de Chile.</p>
+  </div>
+</div>
+
+<div class="scope-note">Sin acceso a la redacción de documentos — solo información de ventas y pagos</div>
+
+<!-- ===== Período ===== -->
+<div class="filtros">
+  @for (p of periodos; track p.key) {
+    <button class="chip" [class.activo]="periodo() === p.key" (click)="elegirPeriodo(p.key)">{{ p.label }}</button>
+  }
+  @if (periodo() === 'personalizado') {
+    <input type="date" [ngModel]="desde()" (ngModelChange)="cambiarFechas($event, hasta())" aria-label="Desde">
+    <span class="muted">a</span>
+    <input type="date" [ngModel]="hasta()" (ngModelChange)="cambiarFechas(desde(), $event)" aria-label="Hasta">
+  }
+</div>
+
+@if (error()) { <p class="login-error">{{ error() }}</p> }
+
+@if (reporte(); as r) {
+  <!-- ===== Indicadores con comparación al período anterior ===== -->
+  <div class="kpi-grid" [class.recargando]="cargando()">
+    <div class="kpi-card destacado">
+      <div class="kpi-label">Ingresos</div>
+      <div class="kpi-value">{{ clp(r.actual.ingresos) }}</div>
+      @if (variacion(r.actual.ingresos, r.anterior.ingresos); as v) {
+        @if (v.texto) { <div class="kpi-delta" [class.baja]="!v.sube">{{ v.texto }} vs. período anterior</div> }
+      }
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Trámites vendidos</div>
+      <div class="kpi-value">{{ r.actual.ventas }}</div>
+      @if (variacion(r.actual.ventas, r.anterior.ventas); as v) {
+        @if (v.texto) { <div class="kpi-delta" [class.baja]="!v.sube">{{ v.texto }}</div> }
+      }
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Ticket promedio</div>
+      <div class="kpi-value">{{ clp(r.actual.ticketPromedio) }}</div>
+      <div class="kpi-hint">Por compra ({{ r.actual.compras }} compras)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Descuentos por cupones</div>
+      <div class="kpi-value">{{ clp(r.actual.descuentos) }}</div>
     </div>
   </div>
-  
-  <div class="scope-note">Sin acceso a la redacción de documentos — solo información de pago y reportes</div>
-  
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab() === 'pagos'" (click)="showTab('pagos')">Pagos</button>
-    <button class="tab" [class.active]="activeTab() === 'comprobantes'" (click)="showTab('comprobantes')">Comprobantes</button>
-    <button class="tab" [class.active]="activeTab() === 'reportes'" (click)="showTab('reportes')">Reportes</button>
+
+  <!-- ===== Ventas en el tiempo ===== -->
+  <section class="panel">
+    <h3>Ventas {{ agrupar() === 'dia' ? 'por día' : agrupar() === 'mes' ? 'por mes' : 'por año' }}</h3>
+    @if (r.actual.ventas) {
+      <div class="grafico" role="img" [attr.aria-label]="'Ingresos ' + (agrupar() === 'dia' ? 'diarios' : 'por período')">
+        @for (s of serie(); track s.clave) {
+          <div class="columna" [title]="etiqueta(s.clave) + ': ' + clp(s.ingresos) + ' (' + s.ventas + ' trámites)'">
+            <div class="barra-v" [style.height.%]="s.pct" [class.vacia]="!s.ingresos"></div>
+            <span class="eje">{{ s.etiqueta }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="muted vacio">No hubo ventas en este período.</p>
+    }
+  </section>
+
+  <div class="dos-columnas">
+    <!-- ===== Trámites más vendidos ===== -->
+    <section class="panel">
+      <h3>Trámites más vendidos</h3>
+      @for (s of servicios(); track s.servicio; let i = $index) {
+        <div class="ranking">
+          <span class="puesto">{{ i + 1 }}</span>
+          <div class="ranking-info">
+            <div class="ranking-fila"><strong>{{ s.servicio }}</strong><span>{{ clp(s.ingresos) }}</span></div>
+            <div class="barra-fondo"><span class="barra-valor" [style.width.%]="s.pct"></span></div>
+            <span class="muted">{{ s.ventas }} {{ s.ventas === 1 ? 'venta' : 'ventas' }} · {{ s.pct }} % de los ingresos</span>
+          </div>
+        </div>
+      } @empty {
+        <p class="muted">Sin ventas en este período.</p>
+      }
+    </section>
+
+    <!-- ===== Medios de pago y pagos fallidos ===== -->
+    <section class="panel">
+      <h3>Medios de pago</h3>
+      @for (m of medios(); track m.tipo) {
+        <div class="ranking-fila medio"><span>{{ m.label }}</span><span>{{ m.compras }} · {{ m.pct }} %</span></div>
+        <div class="barra-fondo"><span class="barra-valor" [style.width.%]="m.pct"></span></div>
+      } @empty {
+        <p class="muted">Sin pagos en este período.</p>
+      }
+      <h3 class="separado">Pagos que no se concretaron</h3>
+      <p class="fallidos">
+        <strong>{{ r.fallidos.ordenes }}</strong> {{ r.fallidos.ordenes === 1 ? 'compra rechazada o abandonada' : 'compras rechazadas o abandonadas' }}
+        por <strong>{{ clp(r.fallidos.total) }}</strong>
+      </p>
+      <p class="muted">Clientes que llegaron a Webpay y no terminaron de pagar.</p>
+    </section>
   </div>
-  
-  @if (activeTab() === 'pagos') {
-    <table>
-      <thead>
-        <tr>
-          <th>Folio</th>
-          <th>Cliente</th>
-          <th>Monto</th>
-          <th>Método</th>
-          <th>Estado Webpay</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="folio">EO-2026-0521</td>
-          <td>María José Pérez</td>
-          <td>$22.000</td>
-          <td class="muted">Débito</td>
-          <td><span class="badge aprobado">Aprobado</span></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0498</td>
-          <td>María José Pérez</td>
-          <td>$18.000</td>
-          <td class="muted">Crédito</td>
-          <td><span class="badge rechazado">Rechazado</span></td>
-        </tr>
-        <tr>
-          <td class="folio">EO-2026-0538</td>
-          <td>Constructora Rivas Ltda.</td>
-          <td>$15.000</td>
-          <td class="muted">Débito</td>
-          <td><span class="badge aprobado">Aprobado</span></td>
-        </tr>
-      </tbody>
-    </table>
-  }
-  
-  @if (activeTab() === 'comprobantes') {
-    <p>Aquí van los comprobantes de pago descargables.</p>
-  }
-  
-  @if (activeTab() === 'reportes') {
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Ingresos del mes</div>
-        <div class="kpi-value">$1.240.000</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Pagos rechazados</div>
-        <div class="kpi-value">4</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Ticket promedio</div>
-        <div class="kpi-value">$19.800</div>
-      </div>
+
+  <!-- ===== Detalle de pagos ===== -->
+  <section class="panel">
+    <div class="panel-head">
+      <h3>Detalle de pagos ({{ r.pagos.length }})</h3>
+      <button class="btn-ghost" [disabled]="!r.pagos.length" (click)="descargarCsv()">Descargar Excel (CSV)</button>
     </div>
-  }
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Servicio</th><th>Monto</th><th>Cupón</th><th>Medio de pago</th></tr></thead>
+        <tbody>
+          @for (p of r.pagos; track p.id) {
+            <tr>
+              <td class="muted">{{ p.fecha }}</td>
+              <td class="folio">{{ p.folio }}</td>
+              <td>{{ p.cliente }}</td>
+              <td>{{ p.servicio }}</td>
+              <td>{{ clp(p.monto) }}</td>
+              <td class="muted">{{ p.cupon || '—' }}</td>
+              <td class="muted">{{ tipoPago(p) }}{{ p.tarjeta ? ' · **** ' + p.tarjeta : '' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted vacio">Sin pagos en este período.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+} @else if (cargando()) {
+  <p>Cargando reporte...</p>
+}

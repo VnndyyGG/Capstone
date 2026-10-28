@@ -1,4 +1,4 @@
 node_modules
 .env
 dist/
-leeme.txt
+leeme.txt.DS_Store
